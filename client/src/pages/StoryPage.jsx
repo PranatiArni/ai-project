@@ -27,9 +27,9 @@ function StoryPage() {
 
   return (
     <section className="page-section">
-      <p className="eyebrow">A story for {story.nickname}</p>
+      <p className="eyebrow">{story.nickname ? `A story for ${story.nickname}` : 'Preparation story'}</p>
       <h1>{story.title}</h1>
-      <p>Made for a {story.readingLevel.toLowerCase()}.</p>
+      {story.readingLevel && <p>Made for a {story.readingLevel.toLowerCase()}.</p>}
       {story.photos.length > 0 && (
         <div className="photo-gallery" aria-label="Trip photos">
           {story.photos.map((photo) => (
@@ -43,7 +43,7 @@ function StoryPage() {
       <div className="story-pages">
         {story.pages.map((page) => (
           <article className="story-page" key={page.number}>
-            <h2>Page {page.number} of {story.pages.length}</h2>
+            <h2>{page.title ?? `Page ${page.number} of ${story.pages.length}`}</h2>
             {page.sentences.map((sentence, index) => (
               <p key={`${page.number}-${index}`}>{sentence}</p>
             ))}

@@ -6,6 +6,17 @@
 export const CONCERN_LEVELS = ['not-a-concern', 'sometimes', 'often']
 export const DETAIL_LEVELS = ['brief', 'standard', 'detailed']
 
+export const CONCERN_LEVEL_LABELS = {
+  'not-a-concern': 'Not a concern',
+  sometimes: 'Sometimes hard',
+  often: 'Often hard',
+}
+export const DETAIL_LEVEL_LABELS = {
+  brief: 'Brief — two short sentences per part',
+  standard: 'Standard',
+  detailed: 'Detailed — more explanation',
+}
+
 // Maximum story sentences per section for each detail level.
 export const SENTENCE_LIMITS = { brief: 2, standard: 3, detailed: 4 }
 

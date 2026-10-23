@@ -105,3 +105,114 @@ test('story endpoint returns validation errors as JSON', async (context) => {
   assert.equal(response.status, 400)
   assert.equal(typeof (await response.json()).error, 'string')
 })
+
+async function startTestServer(context, databaseFile = 'test.sqlite') {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ready-together-'))
+  const database = createDatabase(path.join(directory, databaseFile))
+  const server = createApp(database).listen(0)
+  await new Promise((resolve) => server.once('listening', resolve))
+  context.after(async () => {
+    await new Promise((resolve) => server.close(resolve))
+    database.close()
+    fs.rmSync(directory, { recursive: true, force: true })
+  })
+  const baseUrl = `http://127.0.0.1:${server.address().port}`
+  return {
+    get: (route) => fetch(`${baseUrl}${route}`),
+    send: (method, route, body) => fetch(`${baseUrl}${route}`, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  }
+}
+
+test('personalized plans are created, saved, and reloaded without a nickname', async (context) => {
+  const api = await startTestServer(context)
+  const createResponse = await api.send('POST', '/api/stories', {
+    destination: "Dr. Lee's office.",
+    visitType: 'dentist',
+    profile: { sound: 'often', supports: ['headphones'] },
+  })
+  assert.equal(createResponse.status, 201)
+  const created = await createResponse.json()
+
+  assert.equal(created.destination, "Dr. Lee's office")
+  assert.equal(created.nickname, null)
+  assert.equal(created.visitType, 'dentist')
+  assert.equal(created.profile.sound, 'often')
+  assert.ok(created.sections.some((section) => section.id === 'sound'))
+  assert.equal(created.pages.length, created.sections.length)
+  assert.equal(created.pages[0].title, 'Getting ready')
+  assert.ok(created.checklist.every((item) => item.completed === false && item.reason && item.phase))
+  assert.ok(created.questionsForVenue.length > 0)
+  assert.match(created.generalInfoNotice, /does not include verified details/)
+
+  const reloaded = await (await api.get(`/api/stories/${created.id}`)).json()
+  assert.deepEqual(reloaded, created)
+
+  const checklist = created.checklist.map((item) => ({ id: item.id, completed: item.id === 'read-story' }))
+  assert.equal((await api.send('PATCH', `/api/stories/${created.id}/checklist`, { checklist })).status, 200)
+  const afterPatch = await (await api.get(`/api/stories/${created.id}`)).json()
+  assert.equal(afterPatch.checklist.find((item) => item.id === 'read-story').completed, true)
+  assert.equal(afterPatch.checklist[0].reason, created.checklist[0].reason)
+  assert.ok(afterPatch.updatedAt >= created.updatedAt)
+})
+
+test('different preferences produce different saved checklists through the API', async (context) => {
+  const api = await startTestServer(context)
+  const create = async (profile) => (await api.send('POST', '/api/stories', {
+    destination: 'Main Street Market',
+    visitType: 'grocery-store',
+    profile,
+  })).json()
+  const soundPlan = await create({ sound: 'often' })
+  const crowdPlan = await create({ crowds: 'often', supports: ['comfort-item'] })
+  const checklistIds = (plan) => plan.checklist.map((item) => item.id)
+
+  assert.ok(checklistIds(soundPlan).includes('preview-sounds'))
+  assert.ok(!checklistIds(crowdPlan).includes('preview-sounds'))
+  assert.ok(checklistIds(crowdPlan).includes('plan-quiet-time'))
+  assert.ok(checklistIds(crowdPlan).includes('pack-supports'))
+})
+
+test('invalid personalized requests return clear JSON errors', async (context) => {
+  const api = await startTestServer(context)
+  const cases = [
+    { body: { visitType: 'dentist' }, error: /Destination is required/ },
+    { body: { destination: 'X', visitType: 'castle' }, error: /visit types/ },
+    { body: { destination: 'X', visitType: 'dentist', profile: { sound: 'extreme' } }, error: /valid option/ },
+    { body: { destination: 'X', profile: { supports: ['jetpack'] } }, error: /not recognized/ },
+    { body: { destination: 'x'.repeat(101), visitType: 'other' }, error: /100 characters/ },
+  ]
+  for (const { body, error } of cases) {
+    const response = await api.send('POST', '/api/stories', body)
+    assert.equal(response.status, 400, JSON.stringify(body))
+    assert.match((await response.json()).error, error)
+  }
+  assert.deepEqual(await (await api.get('/api/stories')).json(), [])
+})
+
+test('the saved-visits list is lightweight and shows checklist progress', async (context) => {
+  const api = await startTestServer(context)
+  const created = await (await api.send('POST', '/api/stories', {
+    destination: 'Library',
+    visitType: 'library',
+    photos: [{ name: 'door.png', type: 'image/png', dataUrl: 'data:image/png;base64,dGVzdA==' }],
+  })).json()
+
+  const [summary] = await (await api.get('/api/stories')).json()
+  assert.equal(summary.id, created.id)
+  assert.equal(summary.photos, undefined)
+  assert.equal(summary.pages, undefined)
+  assert.deepEqual(summary.checklistProgress, { completed: 0, total: created.checklist.length })
+})
+
+test('plan options list the choices the form can offer', async (context) => {
+  const api = await startTestServer(context)
+  const options = await (await api.get('/api/plan-options')).json()
+  assert.ok(options.visitTypes.some((type) => type.id === 'dentist'))
+  assert.deepEqual(options.sensoryAreas.map((area) => area.id), ['sound', 'lighting', 'crowds', 'waiting'])
+  assert.ok(options.supports.some((support) => support.id === 'headphones'))
+  assert.equal(options.limits.maxCustomSupports, 3)
+})

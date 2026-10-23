@@ -5,6 +5,32 @@ import Database from 'better-sqlite3'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 
+// Each migration runs once, in order. SQLite's `user_version` records how many
+// have been applied. Only add new migrations to the end; never edit old ones.
+const MIGRATIONS = [
+  // 1: Personalized plans. New columns are nullable so older saved stories
+  // keep working unchanged.
+  `
+    ALTER TABLE stories ADD COLUMN visit_type TEXT;
+    ALTER TABLE stories ADD COLUMN profile_json TEXT;
+    ALTER TABLE stories ADD COLUMN sections_json TEXT;
+    ALTER TABLE stories ADD COLUMN plan_details_json TEXT;
+    ALTER TABLE stories ADD COLUMN updated_at TEXT;
+  `,
+]
+
+export const schemaVersion = MIGRATIONS.length
+
+function migrate(db) {
+  const applied = db.pragma('user_version', { simple: true })
+  for (let version = applied; version < MIGRATIONS.length; version += 1) {
+    db.transaction(() => {
+      db.exec(MIGRATIONS[version])
+      db.pragma(`user_version = ${version + 1}`)
+    })()
+  }
+}
+
 export function createDatabase(databasePath = path.resolve(here, '../.data/app.sqlite')) {
   fs.mkdirSync(path.dirname(databasePath), { recursive: true })
   const db = new Database(databasePath)
@@ -47,6 +73,7 @@ export function createDatabase(databasePath = path.resolve(here, '../.data/app.s
       created_at TEXT NOT NULL
     );
   `)
+  migrate(db)
 
   const samplePlacesPath = path.resolve(here, '../client/src/data/samplePlaces.json')
   const samplePlaces = JSON.parse(fs.readFileSync(samplePlacesPath, 'utf8'))
@@ -62,22 +89,61 @@ export function createDatabase(databasePath = path.resolve(here, '../.data/app.s
   return db
 }
 
+function parseJson(value, fallback) {
+  return value ? JSON.parse(value) : fallback
+}
+
+function checklistProgress(checklist) {
+  return {
+    completed: checklist.filter((step) => step.completed).length,
+    total: checklist.length,
+  }
+}
+
+// Stories saved before personalization have null visit_type, profile_json,
+// sections_json, and plan_details_json; those fields come back as null or [].
 export function serializeStory(row) {
   if (!row) return null
+  const details = parseJson(row.plan_details_json, {})
   return {
     id: row.id,
     title: row.title,
     destination: row.destination,
     placeType: row.place_type,
-    nickname: row.nickname,
-    readingLevel: row.reading_level,
+    visitType: row.visit_type ?? null,
+    nickname: row.nickname || null,
+    readingLevel: row.reading_level || null,
+    profile: parseJson(row.profile_json, null),
     triggers: JSON.parse(row.triggers_json),
     copingTools: JSON.parse(row.coping_tools_json),
+    sections: parseJson(row.sections_json, null),
     pages: JSON.parse(row.pages_json),
     photos: JSON.parse(row.photos_json),
     checklist: JSON.parse(row.checklist_json),
+    suggestions: details.suggestions ?? [],
+    questionsForVenue: details.questionsForVenue ?? [],
+    generalInfoNotice: details.generalInfoNotice ?? null,
     createdAt: row.created_at,
+    updatedAt: row.updated_at ?? row.created_at,
   }
+}
+
+// Lightweight rows for the saved-visits list; leaves out photos and story text.
+export function listStorySummaries(db) {
+  return db.prepare(`
+    SELECT id, title, destination, place_type, visit_type, checklist_json,
+      created_at, updated_at
+    FROM stories ORDER BY created_at DESC
+  `).all().map((row) => ({
+    id: row.id,
+    title: row.title,
+    destination: row.destination,
+    placeType: row.place_type,
+    visitType: row.visit_type ?? null,
+    checklistProgress: checklistProgress(JSON.parse(row.checklist_json)),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at ?? row.created_at,
+  }))
 }
 
 export function listPlaces(db) {

@@ -5,7 +5,9 @@
 
 import {
   CHECKLIST_RULES,
+  CONCERN_LEVEL_LABELS,
   CONCERN_LEVELS,
+  DETAIL_LEVEL_LABELS,
   DETAIL_LEVELS,
   MAX_CHECKLIST_ITEMS,
   MAX_CUSTOM_SUPPORT_LENGTH,
@@ -213,9 +215,38 @@ function buildChecklist(context) {
   }))
 }
 
+// The choices a visit-setup form can offer, so the client never keeps its own copy.
+export function getPlanOptions() {
+  return {
+    visitTypes: Object.entries(VISIT_TYPES).map(([id, type]) => ({ id, label: type.label })),
+    sensoryAreas: AREA_IDS.map((id) => ({ id, label: SENSORY_AREAS[id].label })),
+    concernLevels: CONCERN_LEVELS.map((id) => ({ id, label: CONCERN_LEVEL_LABELS[id] })),
+    detailLevels: DETAIL_LEVELS.map((id) => ({ id, label: DETAIL_LEVEL_LABELS[id] })),
+    supports: SUPPORT_IDS.map((id) => ({ id, label: SUPPORTS[id].label })),
+    limits: {
+      maxCustomSupports: MAX_CUSTOM_SUPPORTS,
+      maxCustomSupportLength: MAX_CUSTOM_SUPPORT_LENGTH,
+    },
+  }
+}
+
+export function isVisitType(id) {
+  return Object.hasOwn(VISIT_TYPES, id)
+}
+
+// Saved stories keep a `pages` list so the story reader works for both older
+// stories and personalized plans.
+export function sectionsToPages(sections) {
+  return sections.map((section, index) => ({
+    number: index + 1,
+    title: section.title,
+    sentences: section.sentences,
+  }))
+}
+
 export function buildPlan({ destination, visitType, profile } = {}) {
   const normalized = normalizeProfile(profile)
-  const visitTypeId = Object.hasOwn(VISIT_TYPES, visitType) ? visitType : 'other'
+  const visitTypeId = isVisitType(visitType) ? visitType : 'other'
   const type = VISIT_TYPES[visitTypeId]
   const place = typeof destination === 'string' && destination.trim()
     ? destination.trim()
