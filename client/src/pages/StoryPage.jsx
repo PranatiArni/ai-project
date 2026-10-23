@@ -1,10 +1,35 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import StoryPicture from '../components/StoryPicture.jsx'
+import StoryReader, { EVERY_PLAN_REASON } from '../components/StoryReader.jsx'
 import { requestJson } from '../api.js'
+
+const PHASES = [
+  { id: 'before', label: 'Before the visit' },
+  { id: 'during', label: 'During the visit' },
+  { id: 'after', label: 'Afterward' },
+]
+
+
+// Describes the choices a plan was built from, using the labels the form showed.
+function describeProfile(profile, options) {
+  if (!profile || !options) return null
+  const levelLabel = (id) => options.concernLevels.find((level) => level.id === id)?.label.toLowerCase()
+  const areas = options.sensoryAreas
+    .filter((area) => profile[area.id] && profile[area.id] !== 'not-a-concern')
+    .map((area) => `${area.label} (${levelLabel(profile[area.id])})`)
+  const supports = [
+    ...options.supports.filter((support) => profile.supports.includes(support.id)).map((support) => support.label),
+    ...profile.customSupports,
+  ]
+  const detail = options.detailLevels.find((level) => level.id === profile.detailLevel)?.label.split(' — ')[0]
+  return { areas, supports, detail }
+}
 
 function StoryPage() {
   const { storyId } = useParams()
   const [story, setStory] = useState(null)
+  const [options, setOptions] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -13,46 +38,160 @@ function StoryPage() {
       .then(setStory)
       .catch((loadError) => setError(loadError.message))
       .finally(() => setLoading(false))
+    // Labels for the "made for your choices" summary; the page still works without them.
+    requestJson('/api/plan-options').then(setOptions).catch(() => {})
   }, [storyId])
 
-  if (loading) return <p className="page-section">Loading your story…</p>
+  if (loading) return <p className="page-section">Loading your plan…</p>
   if (error) {
     return (
       <section className="page-section">
         <p className="error-message" role="alert">{error}</p>
-        <Link to="/stories">Back to saved stories</Link>
+        <Link to="/stories">Back to saved plans</Link>
       </section>
     )
   }
 
+  const choices = describeProfile(story.profile, options)
+  const completed = story.checklist.filter((step) => step.completed).length
+  const hasPhases = story.checklist.some((step) => step.phase)
+  const checklistGroups = hasPhases
+    ? PHASES.map((phase) => ({
+      ...phase,
+      steps: story.checklist.filter((step) => step.phase === phase.id),
+    })).filter((group) => group.steps.length > 0)
+    : [{ id: 'all', label: null, steps: story.checklist }]
+
   return (
-    <section className="page-section">
-      <p className="eyebrow">{story.nickname ? `A story for ${story.nickname}` : 'Preparation story'}</p>
-      <h1>{story.title}</h1>
-      {story.readingLevel && <p>Made for a {story.readingLevel.toLowerCase()}.</p>}
-      {story.photos.length > 0 && (
-        <div className="photo-gallery" aria-label="Trip photos">
-          {story.photos.map((photo) => (
-            <figure key={`${story.id}-${photo.name}`}>
-              <img src={photo.dataUrl} alt={`${photo.name}, a photo for the trip story`} />
-              <figcaption>{photo.name}</figcaption>
-            </figure>
-          ))}
+    <article className="page-section plan-page">
+      <header className="plan-header">
+        <p className="eyebrow">
+          {story.placeType}
+          {story.nickname ? ` · Prepared for ${story.nickname}` : ''}
+        </p>
+        <h1>{story.title}</h1>
+        <p className="plan-meta">
+          Saved {new Date(story.createdAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+          {' · '}
+          {completed} of {story.checklist.length} checklist steps done
+        </p>
+        <div className="button-row plan-actions">
+          <Link className="button-link" to={`/trip/${story.id}`}>Open visit checklist</Link>
+          <button className="button-link-secondary" type="button" onClick={() => window.print()}>
+            Print plan
+          </button>
         </div>
+      </header>
+
+      {story.generalInfoNotice && (
+        <p className="info-note">
+          <strong>About this plan: </strong>
+          {story.generalInfoNotice} Check anything important with the place directly.
+        </p>
       )}
-      <div className="story-pages">
-        {story.pages.map((page) => (
-          <article className="story-page" key={page.number}>
-            <h2>{page.title ?? `Page ${page.number} of ${story.pages.length}`}</h2>
-            {page.sentences.map((sentence, index) => (
-              <p key={`${page.number}-${index}`}>{sentence}</p>
+
+      {choices && (
+        <section className="choices-summary" aria-labelledby="choices-heading">
+          <h2 id="choices-heading">Made for your choices</h2>
+          <dl>
+            <div>
+              <dt>Areas to prepare for</dt>
+              <dd>{choices.areas.length > 0 ? choices.areas.join(', ') : 'None chosen — this is the general plan'}</dd>
+            </div>
+            <div>
+              <dt>Supports</dt>
+              <dd>{choices.supports.length > 0 ? choices.supports.join(', ') : 'None chosen'}</dd>
+            </div>
+            {choices.detail && (
+              <div>
+                <dt>Story detail</dt>
+                <dd>{choices.detail}</dd>
+              </div>
+            )}
+          </dl>
+        </section>
+      )}
+
+      <div className="plan-layout">
+        <section className="story-panel" aria-labelledby="story-heading">
+          <div className="story-panel-heading">
+            <h2 id="story-heading">Preparation story</h2>
+            <Link to={`/stories/${story.id}/read`}>Read together in a quiet view</Link>
+          </div>
+          <p className="field-help screen-only">One part at a time. Read it together, as often as is helpful.</p>
+          <StoryReader story={story} />
+          {/* The whole story at once, shown only when printing. */}
+          <ol className="story-steps story-print">
+            {story.pages.map((page, pageIndex) => {
+              // Pages are saved in the same order as sections (sectionsToPages on the server).
+              const reason = story.sections?.[pageIndex]?.reason
+              return (
+                <li key={page.number}>
+                  {story.sections?.[pageIndex] && (
+                    <StoryPicture
+                      sectionId={story.sections[pageIndex].id}
+                      visitType={story.visitType}
+                      className="story-picture print-picture"
+                    />
+                  )}
+                  <h3>{page.title ?? `Page ${page.number}`}</h3>
+                  {reason && reason !== EVERY_PLAN_REASON && (
+                    <p className="step-reason">{reason}</p>
+                  )}
+                  {page.sentences.map((sentence, index) => (
+                    <p key={`${page.number}-${index}`}>{sentence}</p>
+                  ))}
+                </li>
+              )
+            })}
+          </ol>
+        </section>
+
+        <aside className="plan-aside">
+          <section aria-labelledby="checklist-heading">
+            <h2 id="checklist-heading">Checklist</h2>
+            {checklistGroups.map((group) => (
+              <div key={group.id}>
+                {group.label && <h3>{group.label}</h3>}
+                <ul className="plan-checklist">
+                  {group.steps.map((step) => (
+                    <li key={step.id} className={step.completed ? 'done' : undefined}>
+                      <span className="check-mark" aria-hidden="true">{step.completed ? '✓' : ''}</span>
+                      <span>
+                        {step.label}
+                        {step.completed && <span className="visually-hidden"> (done)</span>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </article>
-        ))}
+            <Link to={`/trip/${story.id}`}>Mark steps as done</Link>
+          </section>
+
+          {story.questionsForVenue.length > 0 && (
+            <section aria-labelledby="questions-heading">
+              <h2 id="questions-heading">Questions to ask the place</h2>
+              <ul className="plain-list">
+                {story.questionsForVenue.map((question) => <li key={question}>{question}</li>)}
+              </ul>
+            </section>
+          )}
+
+          {story.suggestions.length > 0 && (
+            <section aria-labelledby="ideas-heading">
+              <h2 id="ideas-heading">Ideas you might consider</h2>
+              <ul className="plain-list">
+                {story.suggestions.map((suggestion) => <li key={suggestion.id}>{suggestion.text}</li>)}
+              </ul>
+              <p className="field-help">Only if they suit your family. Nothing here is required.</p>
+            </section>
+          )}
+        </aside>
       </div>
-      <Link className="button-link" to={`/trip/${story.id}`}>Open day-of checklist</Link>
-      <p><Link to="/stories">Back to saved stories</Link></p>
-    </section>
+
+      <p className="plan-footer-link"><Link to="/stories">Back to saved plans</Link></p>
+    </article>
   )
 }
 

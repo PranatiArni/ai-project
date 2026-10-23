@@ -109,6 +109,21 @@ test('chosen supports are kept even when no matching area is marked', () => {
   assert.equal(plan.checklist.find((item) => item.id === 'pack-supports').label, 'Pack headphones')
 })
 
+test('the supports section lists each chosen support so the story can picture it', () => {
+  const plan = buildPlan({
+    destination: 'X',
+    visitType: 'other',
+    profile: { supports: ['timer', 'headphones'], customSupports: ['a blue blanket'] },
+  })
+  const supports = plan.sections.find((section) => section.id === 'supports')
+  assert.deepEqual(supports.items, [
+    { supportId: 'headphones', label: 'headphones' },
+    { supportId: 'timer', label: 'a visual timer' },
+    { supportId: null, label: 'a blue blanket' },
+  ])
+  assert.equal(buildPlan({ destination: 'X', visitType: 'other' }).sections.some((s) => s.items), false)
+})
+
 test('suggestions appear only for marked areas that have no chosen support', () => {
   const withoutSupport = buildPlan({ destination: 'Cafe', visitType: 'restaurant', profile: { sound: 'often' } })
   const withSupport = buildPlan({

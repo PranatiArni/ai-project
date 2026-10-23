@@ -2,6 +2,7 @@ import { Link, Route, Routes } from 'react-router-dom'
 import CalmBreakPage from './pages/CalmBreakPage.jsx'
 import HomePage from './pages/HomePage.jsx'
 import PlacesPage from './pages/PlacesPage.jsx'
+import ReadTogetherPage from './pages/ReadTogetherPage.jsx'
 import StoriesPage from './pages/StoriesPage.jsx'
 import StoryFormPage from './pages/StoryFormPage.jsx'
 import StoryPage from './pages/StoryPage.jsx'
@@ -35,6 +36,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/stories" element={<StoriesPage />} />
           <Route path="/stories/:storyId" element={<StoryPage />} />
+          <Route path="/stories/:storyId/read" element={<ReadTogetherPage />} />
           <Route path="/create-story" element={<StoryFormPage />} />
           <Route path="/trip" element={<StoriesPage />} />
           <Route path="/trip/:storyId" element={<TripChecklistPage />} />

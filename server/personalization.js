@@ -110,7 +110,7 @@ function sensorySection(area, context) {
     ],
     [],
     context.limit,
-    `You said ${details.label.toLowerCase()} is ${level === 'often' ? 'often' : 'sometimes'} hard`,
+    `You marked ${details.label.toLowerCase()} as ${level === 'often' ? 'often' : 'sometimes'} hard`,
   )
 }
 
@@ -135,14 +135,22 @@ function buildSections(context) {
 
   const packList = context.packList
   if (packList.length > 0) {
-    sections.push(section(
-      'supports',
-      'Things that can help me',
-      [`I can bring ${joinList(packList)}.`, 'I can choose to use them, or not.'],
-      [],
-      limit,
-      'Based on the supports you chose',
-    ))
+    sections.push({
+      ...section(
+        'supports',
+        'Things that can help me',
+        [`I can bring ${joinList(packList)}.`, 'I can choose to use them, or not.'],
+        [],
+        limit,
+        'Based on the supports you chose',
+      ),
+      // Lets the story show a picture for each support. Family-added supports
+      // have no picture of their own, so their supportId is null.
+      items: [
+        ...context.profile.supports.map((id) => ({ supportId: id, label: SUPPORTS[id].packAs })),
+        ...context.profile.customSupports.map((label) => ({ supportId: null, label })),
+      ],
+    })
   }
 
   sections.push(
