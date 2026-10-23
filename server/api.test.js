@@ -32,11 +32,9 @@ test('story creation, checklist persistence, and place ratings work through JSON
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       destination: 'the dentist',
-      placeType: 'dentist office',
+      visitType: 'dentist',
       nickname: 'Sam',
-      readingLevel: 'Early reader',
-      triggers: ['loud sounds'],
-      copingTools: ['headphones'],
+      profile: { sound: 'sometimes', supports: ['headphones'] },
       photos: [{
         name: 'front.jpg',
         type: 'image/jpeg',

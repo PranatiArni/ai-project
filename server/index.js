@@ -10,7 +10,6 @@ import {
   ProfileError,
   sectionsToPages,
 } from './personalization.js'
-import { generateStory, maxStoryTriggers } from './storyGenerator.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const databasePath = process.env.DATABASE_PATH || path.resolve(here, '../.data/app.sqlite')
@@ -18,15 +17,6 @@ const databasePath = process.env.DATABASE_PATH || path.resolve(here, '../.data/a
 // Problems with what the user sent. These become 400 responses; any other
 // error is a server bug and goes to the 500 handler.
 class ValidationError extends Error {}
-
-function cleanText(value, field, maxLength) {
-  if (typeof value !== 'string') throw new ValidationError(`${field} is required.`)
-  const cleaned = value.trim().replace(/[.!?]+/g, '').replace(/\s+/g, ' ')
-  if (!cleaned || cleaned.length > maxLength) {
-    throw new ValidationError(`${field} must be between 1 and ${maxLength} characters.`)
-  }
-  return cleaned
-}
 
 // Keeps punctuation inside names such as "Dr. Lee's office" and only removes
 // end punctuation that would clash with the sentence around it.
@@ -46,14 +36,6 @@ function cleanName(value, field, maxLength, required) {
     throw new ValidationError(`${field} must be ${maxLength} characters or fewer.`)
   }
   return cleaned
-}
-
-function cleanList(value, field, maxItems, required = false) {
-  if (!Array.isArray(value)) throw new ValidationError(`${field} must be a list.`)
-  const list = value.map((item) => cleanText(item, field, 120))
-  if (list.length > maxItems) throw new ValidationError(`${field} can contain at most ${maxItems} items.`)
-  if (required && list.length === 0) throw new ValidationError(`Add at least one ${field.toLowerCase()}.`)
-  return list
 }
 
 function cleanPhotos(value) {
@@ -83,7 +65,9 @@ function cleanPhotos(value) {
   return photos
 }
 
-// Personalized plans: a destination, a visit type, and an optional profile.
+// A plan needs a destination and visit type; the profile is optional.
+// Stories saved by the earlier template generator are still read and shown,
+// but new stories are always created this way.
 function createPersonalizedStory(body) {
   const destination = cleanName(body.destination, 'Destination', 100, true)
   const visitType = body.visitType ?? 'other'
@@ -118,65 +102,6 @@ function createPersonalizedStory(body) {
   }
 }
 
-// Older request shape with free-text triggers and coping tools. Kept so the
-// current form keeps working until it moves to personalized plans.
-function createLegacyStory(body) {
-  const destination = cleanText(body.destination, 'Destination', 100)
-  const placeType = cleanText(body.placeType, 'Place type', 80)
-  const nickname = cleanText(body.nickname, "Child's nickname", 40)
-  const readingLevel = cleanText(body.readingLevel, 'Reading level', 40)
-  if (!['Early reader', 'Beginning reader', 'Independent reader'].includes(readingLevel)) {
-    throw new ValidationError('Choose one of the available reading levels.')
-  }
-  const triggers = cleanList(body.triggers, 'Triggers', maxStoryTriggers)
-  const copingTools = cleanList(body.copingTools, 'Coping tools', 12, true)
-  const photos = cleanPhotos(body.photos ?? [])
-  const pages = generateStory({
-    destination,
-    placeType,
-    nickname,
-    readingLevel,
-    triggers,
-    copingTools,
-    hasPhotos: photos.length > 0,
-  })
-  const now = new Date().toISOString()
-
-  return {
-    id: crypto.randomUUID(),
-    title: `A visit to ${destination}`,
-    destination,
-    placeType,
-    visitType: null,
-    nickname,
-    readingLevel,
-    profile: null,
-    triggers,
-    copingTools,
-    sections: null,
-    pages,
-    photos,
-    checklist: createChecklist(copingTools),
-    planDetails: null,
-    createdAt: now,
-    updatedAt: now,
-  }
-}
-
-function createChecklist(copingTools) {
-  return [
-    { id: 'read-story', label: 'Read my story before we go', completed: false },
-    {
-      id: 'pack-coping-tools',
-      label: `Pack my coping tools: ${copingTools.join(', ')}`,
-      completed: false,
-    },
-    { id: 'travel', label: 'Travel to the place with my grown-up', completed: false },
-    { id: 'look-around', label: 'Look around and take one step at a time', completed: false },
-    { id: 'finish-visit', label: 'Finish the visit and celebrate trying', completed: false },
-  ]
-}
-
 function createApp(database = createDatabase(databasePath)) {
   const app = express()
   app.use(express.json({ limit: '16mb' }))
@@ -197,9 +122,7 @@ function createApp(database = createDatabase(databasePath)) {
     const body = request.body ?? {}
     let story
     try {
-      story = body.visitType !== undefined || body.profile !== undefined
-        ? createPersonalizedStory(body)
-        : createLegacyStory(body)
+      story = createPersonalizedStory(body)
     } catch (error) {
       if (error instanceof ValidationError || error instanceof ProfileError) {
         return response.status(400).json({ error: error.message })
