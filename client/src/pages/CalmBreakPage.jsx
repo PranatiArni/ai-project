@@ -51,7 +51,7 @@ function CalmBreakPage() {
         <li>Notice one thing that feels comfortable.</li>
         <li>Ask your grown-up for help if you want it.</li>
       </ul>
-      <Link className="button-link" to={returnPath}>Return to my same checklist step</Link>
+      <Link className="button-link" to={returnPath}>Go back to the same step</Link>
     </section>
   )
 }

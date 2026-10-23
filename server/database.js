@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Database from 'better-sqlite3'
+import { buildJourney } from './personalization.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 
@@ -16,6 +17,11 @@ const MIGRATIONS = [
     ALTER TABLE stories ADD COLUMN sections_json TEXT;
     ALTER TABLE stories ADD COLUMN plan_details_json TEXT;
     ALTER TABLE stories ADD COLUMN updated_at TEXT;
+  `,
+  // 2: Which visit-journey steps are done. The steps themselves are built
+  // from the saved plan, so only progress is stored.
+  `
+    ALTER TABLE stories ADD COLUMN journey_progress_json TEXT;
   `,
 ]
 
@@ -105,6 +111,8 @@ function checklistProgress(checklist) {
 export function serializeStory(row) {
   if (!row) return null
   const details = parseJson(row.plan_details_json, {})
+  const sections = parseJson(row.sections_json, null)
+  const checklist = JSON.parse(row.checklist_json)
   return {
     id: row.id,
     title: row.title,
@@ -116,10 +124,11 @@ export function serializeStory(row) {
     profile: parseJson(row.profile_json, null),
     triggers: JSON.parse(row.triggers_json),
     copingTools: JSON.parse(row.coping_tools_json),
-    sections: parseJson(row.sections_json, null),
+    sections,
     pages: JSON.parse(row.pages_json),
     photos: JSON.parse(row.photos_json),
-    checklist: JSON.parse(row.checklist_json),
+    checklist,
+    journey: buildJourney({ sections, checklist }, parseJson(row.journey_progress_json, {})),
     suggestions: details.suggestions ?? [],
     questionsForVenue: details.questionsForVenue ?? [],
     generalInfoNotice: details.generalInfoNotice ?? null,

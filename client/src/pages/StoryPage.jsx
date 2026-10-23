@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import ChecklistItem from '../components/ChecklistItem.jsx'
 import StoryPicture from '../components/StoryPicture.jsx'
 import StoryReader, { EVERY_PLAN_REASON } from '../components/StoryReader.jsx'
 import { requestJson } from '../api.js'
+import { useChecklist } from '../useChecklist.js'
 
 const PHASES = [
   { id: 'before', label: 'Before the visit' },
@@ -32,6 +34,7 @@ function StoryPage() {
   const [options, setOptions] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const checklist = useChecklist(story, setStory)
 
   useEffect(() => {
     requestJson(`/api/stories/${storyId}`)
@@ -76,7 +79,9 @@ function StoryPage() {
           {completed} of {story.checklist.length} checklist steps done
         </p>
         <div className="button-row plan-actions">
-          <Link className="button-link" to={`/trip/${story.id}`}>Open visit checklist</Link>
+          <Link className="button-link" to={`/trip/${story.id}`}>
+            {story.journey ? 'Start the visit journey' : 'Open visit checklist'}
+          </Link>
           <button className="button-link-secondary" type="button" onClick={() => window.print()}>
             Print plan
           </button>
@@ -150,23 +155,17 @@ function StoryPage() {
         <aside className="plan-aside">
           <section aria-labelledby="checklist-heading">
             <h2 id="checklist-heading">Checklist</h2>
+            {checklist.error && <p className="error-message" role="alert">{checklist.error}</p>}
             {checklistGroups.map((group) => (
               <div key={group.id}>
                 {group.label && <h3>{group.label}</h3>}
                 <ul className="plan-checklist">
-                  {group.steps.map((step) => (
-                    <li key={step.id} className={step.completed ? 'done' : undefined}>
-                      <span className="check-mark" aria-hidden="true">{step.completed ? '✓' : ''}</span>
-                      <span>
-                        {step.label}
-                        {step.completed && <span className="visually-hidden"> (done)</span>}
-                      </span>
-                    </li>
+                  {group.steps.map((item) => (
+                    <ChecklistItem key={item.id} item={item} onToggle={checklist.toggle} savingId={checklist.savingId} />
                   ))}
                 </ul>
               </div>
             ))}
-            <Link to={`/trip/${story.id}`}>Mark steps as done</Link>
           </section>
 
           {story.questionsForVenue.length > 0 && (

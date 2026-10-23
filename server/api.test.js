@@ -214,3 +214,32 @@ test('plan options list the choices the form can offer', async (context) => {
   assert.ok(options.supports.some((support) => support.id === 'headphones'))
   assert.equal(options.limits.maxCustomSupports, 3)
 })
+
+test('journey step progress is saved and validated', async (context) => {
+  const api = await startTestServer(context)
+  const plan = await (await api.send('POST', '/api/stories', {
+    destination: 'the dentist',
+    visitType: 'dentist',
+    profile: { sound: 'often', supports: ['headphones'] },
+  })).json()
+  assert.deepEqual(plan.journey.map((step) => step.id), ['get-ready', 'arrive', 'during', 'leave'])
+  assert.ok(plan.journey.every((step) => step.completed === false))
+
+  const marked = await api.send('PATCH', `/api/stories/${plan.id}/journey`, { stepId: 'arrive', completed: true })
+  assert.equal(marked.status, 200)
+  assert.equal((await marked.json()).journey.find((step) => step.id === 'arrive').completed, true)
+
+  const reloaded = await (await api.get(`/api/stories/${plan.id}`)).json()
+  assert.deepEqual(reloaded.journey.map((step) => step.completed), [false, true, false, false])
+
+  await api.send('PATCH', `/api/stories/${plan.id}/journey`, { stepId: 'arrive', completed: false })
+  const undone = await (await api.get(`/api/stories/${plan.id}`)).json()
+  assert.equal(undone.journey.find((step) => step.id === 'arrive').completed, false)
+
+  for (const body of [{ stepId: 'fly', completed: true }, { stepId: 'arrive', completed: 'yes' }, {}]) {
+    const response = await api.send('PATCH', `/api/stories/${plan.id}/journey`, body)
+    assert.equal(response.status, 400, JSON.stringify(body))
+    assert.equal(typeof (await response.json()).error, 'string')
+  }
+  assert.equal((await api.send('PATCH', '/api/stories/missing/journey', { stepId: 'arrive', completed: true })).status, 404)
+})

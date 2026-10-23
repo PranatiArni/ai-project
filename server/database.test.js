@@ -81,3 +81,19 @@ test('opening the same database again does not re-run migrations', (context) => 
   const columns = reopened.prepare('PRAGMA table_info(stories)').all().map((column) => column.name)
   assert.equal(columns.filter((name) => name === 'profile_json').length, 1)
 })
+
+test('stories saved before personalization upgrade with no journey', (context) => {
+  const databasePath = temporaryDatabasePath(context)
+  const original = new Database(databasePath)
+  original.exec(ORIGINAL_STORIES_TABLE)
+  original.prepare('INSERT INTO stories VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+    'old', 'A visit', 'the park', 'Other place', 'Sam', 'Early reader', '[]', '[]',
+    JSON.stringify([{ number: 1, sentences: ['Hi.'] }]), '[]', '[]', '2026-10-01T12:00:00.000Z',
+  )
+  original.close()
+
+  const upgraded = createDatabase(databasePath)
+  context.after(() => upgraded.close())
+  const story = serializeStory(upgraded.prepare('SELECT * FROM stories WHERE id = ?').get('old'))
+  assert.equal(story.journey, null)
+})

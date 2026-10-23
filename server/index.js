@@ -199,6 +199,33 @@ function createApp(database = createDatabase(databasePath)) {
     return response.json({ checklist })
   })
 
+  app.patch('/api/stories/:id/journey', (request, response) => {
+    const findStory = () => serializeStory(
+      database.prepare('SELECT * FROM stories WHERE id = ?').get(request.params.id),
+    )
+    const story = findStory()
+    if (!story) return response.status(404).json({ error: 'Story not found.' })
+    if (!story.journey) {
+      return response.status(400).json({ error: 'This story was saved before visit journeys and does not have one.' })
+    }
+
+    const { stepId, completed } = request.body ?? {}
+    if (typeof stepId !== 'string' || typeof completed !== 'boolean') {
+      return response.status(400).json({ error: 'Each journey update needs a stepId and a completed value.' })
+    }
+    if (!story.journey.some((step) => step.id === stepId)) {
+      return response.status(400).json({ error: 'That step is not part of this plan.' })
+    }
+
+    const progress = Object.fromEntries(story.journey.map((step) => [
+      step.id,
+      step.id === stepId ? completed : step.completed,
+    ]))
+    database.prepare('UPDATE stories SET journey_progress_json = ?, updated_at = ? WHERE id = ?')
+      .run(JSON.stringify(progress), new Date().toISOString(), story.id)
+    return response.json({ journey: findStory().journey })
+  })
+
   app.get('/api/places', (_request, response) => {
     response.json(listPlaces(database))
   })

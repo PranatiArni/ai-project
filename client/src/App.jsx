@@ -6,7 +6,7 @@ import ReadTogetherPage from './pages/ReadTogetherPage.jsx'
 import StoriesPage from './pages/StoriesPage.jsx'
 import StoryFormPage from './pages/StoryFormPage.jsx'
 import StoryPage from './pages/StoryPage.jsx'
-import TripChecklistPage from './pages/TripChecklistPage.jsx'
+import VisitJourneyPage from './pages/VisitJourneyPage.jsx'
 import './App.css'
 
 function NotFoundPage() {
@@ -39,7 +39,7 @@ function App() {
           <Route path="/stories/:storyId/read" element={<ReadTogetherPage />} />
           <Route path="/create-story" element={<StoryFormPage />} />
           <Route path="/trip" element={<StoriesPage />} />
-          <Route path="/trip/:storyId" element={<TripChecklistPage />} />
+          <Route path="/trip/:storyId" element={<VisitJourneyPage />} />
           <Route path="/calm-break" element={<CalmBreakPage />} />
           <Route path="/calm-break/:storyId" element={<CalmBreakPage />} />
           <Route path="/places" element={<PlacesPage />} />

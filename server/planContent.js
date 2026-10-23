@@ -354,3 +354,38 @@ export const CHECKLIST_RULES = [
     reason: () => 'Included in every plan',
   },
 ]
+
+// The day-of visit journey. Each step reuses one story section for its
+// picture and words, shows the matching checklist items, and offers a
+// caregiver-facing alternative if the step is not working.
+export const JOURNEY_STEPS = [
+  {
+    id: 'get-ready',
+    title: 'Get ready to go',
+    section: 'getting-ready',
+    checklist: ['read-story', 'pack-supports'],
+    alternative: 'If getting ready feels rushed, it is okay to skip a step or leave a little later.',
+  },
+  {
+    id: 'arrive',
+    title: 'Arrive',
+    section: 'arriving',
+    checklist: ['find-quiet-spot', 'avoid-bright-spot'],
+    alternative: 'If going in feels like too much, it is okay to wait outside or in the car for a few minutes first.',
+  },
+  {
+    id: 'during',
+    title: 'During the visit',
+    section: 'what-might-happen',
+    checklist: [],
+    showCopingIdeas: true,
+    alternative: 'You can pause, take a break, or decide together to stop for today.',
+  },
+  {
+    id: 'leave',
+    title: 'Leave and head home',
+    section: 'leaving',
+    checklist: ['reflect'],
+    alternative: 'If leaving is hard, some families count down together or say a familiar goodbye.',
+  },
+]

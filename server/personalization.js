@@ -9,6 +9,7 @@ import {
   CONCERN_LEVELS,
   DETAIL_LEVEL_LABELS,
   DETAIL_LEVELS,
+  JOURNEY_STEPS,
   MAX_CHECKLIST_ITEMS,
   MAX_CUSTOM_SUPPORT_LENGTH,
   MAX_CUSTOM_SUPPORTS,
@@ -249,6 +250,34 @@ export function sectionsToPages(sections) {
     number: index + 1,
     title: section.title,
     sentences: section.sentences,
+  }))
+}
+
+// Builds the day-of journey from a saved plan's sections and checklist.
+// `progress` maps step ids to true when a step is done. Stories saved before
+// personalization have no sections, so they have no journey (null).
+export function buildJourney({ sections, checklist }, progress = {}) {
+  if (!Array.isArray(sections)) return null
+  const sectionsById = new Map(sections.map((section) => [section.id, section]))
+  const checklistIds = new Set(checklist.map((item) => item.id))
+  // The second sentence of a sensory section is its coping sentence.
+  const copingIdeas = sections
+    .filter((section) => AREA_IDS.includes(section.id))
+    .map((section) => ({
+      id: section.id,
+      title: section.title,
+      text: section.sentences[1] ?? section.sentences[0],
+    }))
+
+  return JOURNEY_STEPS.map((step) => ({
+    id: step.id,
+    title: step.title,
+    pictureSection: step.section,
+    sentences: sectionsById.get(step.section)?.sentences ?? [],
+    checklistIds: step.checklist.filter((id) => checklistIds.has(id)),
+    copingIdeas: step.showCopingIdeas ? copingIdeas : [],
+    alternative: step.alternative,
+    completed: progress[step.id] === true,
   }))
 }
 

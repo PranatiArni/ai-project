@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildPlan, normalizeProfile, ProfileError } from './personalization.js'
+import { buildJourney, buildPlan, normalizeProfile, ProfileError } from './personalization.js'
 import { MAX_CHECKLIST_ITEMS, SENTENCE_LIMITS, SUPPORTS, VISIT_TYPES } from './planContent.js'
 
 const ids = (items) => items.map((item) => item.id)
@@ -172,4 +172,41 @@ test('general place descriptions use hedged wording, not promises', () => {
       assert.match(sentence, hedge, `${id}: "${sentence}"`)
     }
   }
+})
+
+test('the visit journey has four day-of steps built from the plan', () => {
+  const plan = buildPlan({
+    destination: 'Cafe',
+    visitType: 'restaurant',
+    profile: { sound: 'often', lighting: 'often', supports: ['headphones'] },
+  })
+  const journey = buildJourney(plan)
+
+  assert.deepEqual(ids(journey), ['get-ready', 'arrive', 'during', 'leave'])
+  assert.deepEqual(journey[0].sentences, plan.sections.find((s) => s.id === 'getting-ready').sentences)
+  assert.deepEqual(journey[0].checklistIds, ['read-story', 'pack-supports'])
+  assert.deepEqual(journey[1].checklistIds, ['find-quiet-spot', 'avoid-bright-spot'])
+  assert.deepEqual(journey[3].checklistIds, ['reflect'])
+  assert.ok(journey.every((step) => step.alternative && step.completed === false))
+
+  const during = journey.find((step) => step.id === 'during')
+  assert.deepEqual(ids(during.copingIdeas), ['sound', 'lighting'])
+  assert.equal(during.copingIdeas[0].text, 'If sounds feel too loud, I can put on my headphones.')
+})
+
+test('the journey only links checklist items the plan actually has', () => {
+  const journey = buildJourney(buildPlan({ destination: 'X', visitType: 'library' }))
+  assert.deepEqual(journey[0].checklistIds, ['read-story'])
+  assert.deepEqual(journey[1].checklistIds, [])
+  assert.deepEqual(journey[2].copingIdeas, [])
+})
+
+test('journey progress marks only the saved steps as done', () => {
+  const plan = buildPlan({ destination: 'X', visitType: 'other' })
+  const journey = buildJourney(plan, { arrive: true, unknown: true, leave: 'yes' })
+  assert.deepEqual(journey.map((step) => step.completed), [false, true, false, false])
+})
+
+test('stories saved before personalization have no journey', () => {
+  assert.equal(buildJourney({ sections: null, checklist: [] }), null)
 })
