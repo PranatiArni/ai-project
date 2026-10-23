@@ -592,6 +592,70 @@ progress {
   gap: 0.25rem 1rem;
 }
 
+.story-panel-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.story-panel-links button {
+  min-height: 40px;
+  padding: 0.4rem 0.85rem;
+}
+
+.story-panel-heading + .done-note {
+  min-height: 0;
+  margin: 0;
+}
+
+.story-editor {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.story-editor label {
+  display: grid;
+  gap: 0.4rem;
+  color: #243d38;
+  font-weight: 650;
+}
+
+.story-editor textarea {
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.speech-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: -0.5rem 0 1.25rem;
+}
+
+.speech-controls button {
+  gap: 0.45rem;
+  min-height: 40px;
+  padding: 0.4rem 0.85rem;
+}
+
+.button-icon {
+  display: inline-grid;
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.button-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.reader-part .step-reason.edited {
+  background: #f3efe2;
+  color: #5c5130;
+}
+
 /* One-part-at-a-time story reader */
 .story-print {
   display: none;

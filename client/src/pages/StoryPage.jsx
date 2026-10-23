@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import ChecklistItem from '../components/ChecklistItem.jsx'
+import StoryEditor from '../components/StoryEditor.jsx'
 import StoryPicture from '../components/StoryPicture.jsx'
 import StoryReader, { EVERY_PLAN_REASON } from '../components/StoryReader.jsx'
 import { requestJson } from '../api.js'
@@ -34,6 +35,8 @@ function StoryPage() {
   const [options, setOptions] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [savedMessage, setSavedMessage] = useState('')
   const checklist = useChecklist(story, setStory)
 
   useEffect(() => {
@@ -97,7 +100,10 @@ function StoryPage() {
 
       {choices && (
         <section className="choices-summary" aria-labelledby="choices-heading">
-          <h2 id="choices-heading">Made for your choices</h2>
+          <div className="story-panel-heading">
+            <h2 id="choices-heading">Made for your choices</h2>
+            <Link className="screen-only" to={`/stories/${story.id}/preferences`}>Change preferences</Link>
+          </div>
           <dl>
             <div>
               <dt>Areas to prepare for</dt>
@@ -121,10 +127,45 @@ function StoryPage() {
         <section className="story-panel" aria-labelledby="story-heading">
           <div className="story-panel-heading">
             <h2 id="story-heading">Preparation story</h2>
-            <Link to={`/stories/${story.id}/read`}>Read together in a quiet view</Link>
+            {!editing && (
+              <div className="story-panel-links">
+                <Link to={`/stories/${story.id}/read`}>Read together in a quiet view</Link>
+                {story.sections ? (
+                  <button
+                    className="button-link-secondary"
+                    type="button"
+                    onClick={() => {
+                      setSavedMessage('')
+                      setEditing(true)
+                    }}
+                  >
+                    Edit wording
+                  </button>
+                ) : (
+                  // Stories from before personalization can be rebuilt to get
+                  // pictures, editing, and a visit journey.
+                  <Link to={`/stories/${story.id}/preferences`}>Rebuild with preferences</Link>
+                )}
+              </div>
+            )}
           </div>
-          <p className="field-help screen-only">One part at a time. Read it together, as often as is helpful.</p>
-          <StoryReader story={story} />
+          <p className="done-note screen-only" role="status">{savedMessage}</p>
+          {editing ? (
+            <StoryEditor
+              story={story}
+              onCancel={() => setEditing(false)}
+              onSaved={(updated) => {
+                setStory(updated)
+                setEditing(false)
+                setSavedMessage('✓ Your wording is saved.')
+              }}
+            />
+          ) : (
+            <>
+              <p className="field-help screen-only">One part at a time. Read it together, as often as is helpful.</p>
+              <StoryReader story={story} />
+            </>
+          )}
           {/* The whole story at once, shown only when printing. */}
           <ol className="story-steps story-print">
             {story.pages.map((page, pageIndex) => {

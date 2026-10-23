@@ -243,3 +243,95 @@ test('journey step progress is saved and validated', async (context) => {
   }
   assert.equal((await api.send('PATCH', '/api/stories/missing/journey', { stepId: 'arrive', completed: true })).status, 404)
 })
+
+test('caregivers can edit story wording, and the journey uses the edits', async (context) => {
+  const api = await startTestServer(context)
+  const plan = await (await api.send('POST', '/api/stories', {
+    destination: 'the library',
+    visitType: 'library',
+  })).json()
+  const edits = plan.sections.map((section) => ({ id: section.id, sentences: section.sentences }))
+  edits[0] = { id: 'getting-ready', sentences: ['We are going to the big library  ', '', 'Is it far?', 'It is near Grandma’s house!'] }
+
+  const response = await api.send('PUT', `/api/stories/${plan.id}/sections`, { sections: edits })
+  assert.equal(response.status, 200)
+  const edited = await response.json()
+  assert.deepEqual(edited.sections[0].sentences, [
+    'We are going to the big library.', 'Is it far?', 'It is near Grandma’s house!',
+  ])
+  assert.equal(edited.sections[0].edited, true)
+  assert.equal(edited.sections[1].edited, false)
+  assert.deepEqual(edited.pages[0].sentences, edited.sections[0].sentences)
+  assert.deepEqual(edited.journey[0].sentences, edited.sections[0].sentences)
+
+  const reloaded = await (await api.get(`/api/stories/${plan.id}`)).json()
+  assert.deepEqual(reloaded.sections, edited.sections)
+})
+
+test('story edits are validated', async (context) => {
+  const api = await startTestServer(context)
+  const plan = await (await api.send('POST', '/api/stories', { destination: 'X', visitType: 'other' })).json()
+  const valid = plan.sections.map((section) => ({ id: section.id, sentences: section.sentences }))
+  const withFirst = (sentences) => [{ ...valid[0], sentences }, ...valid.slice(1)]
+  const cases = [
+    { sections: valid.slice(1), error: /same parts/ },
+    { sections: [...valid].reverse(), error: /in order/ },
+    { sections: withFirst(['', '  ']), error: /at least one sentence/ },
+    { sections: withFirst(Array.from({ length: 7 }, (_, i) => `Line ${i}`)), error: /at most 6/ },
+    { sections: withFirst(['x'.repeat(201)]), error: /200 characters/ },
+    { sections: withFirst([42]), error: /must be text/ },
+    { sections: undefined, error: /same parts/ },
+  ]
+  for (const { sections, error } of cases) {
+    const response = await api.send('PUT', `/api/stories/${plan.id}/sections`, { sections })
+    assert.equal(response.status, 400)
+    assert.match((await response.json()).error, error)
+  }
+  const unchanged = await (await api.get(`/api/stories/${plan.id}`)).json()
+  assert.deepEqual(unchanged.sections, plan.sections)
+  assert.equal((await api.send('PUT', '/api/stories/missing/sections', { sections: valid })).status, 404)
+})
+
+test('changing preferences rebuilds the plan and keeps progress where it still applies', async (context) => {
+  const api = await startTestServer(context)
+  const plan = await (await api.send('POST', '/api/stories', {
+    destination: 'the dentist',
+    visitType: 'dentist',
+    profile: { sound: 'often', supports: ['headphones'] },
+    photos: [{ name: 'door.png', type: 'image/png', dataUrl: 'data:image/png;base64,dGVzdA==' }],
+  })).json()
+  await api.send('PATCH', `/api/stories/${plan.id}/checklist`, {
+    checklist: plan.checklist.map((item) => ({ id: item.id, completed: ['read-story', 'preview-sounds'].includes(item.id) })),
+  })
+  await api.send('PATCH', `/api/stories/${plan.id}/journey`, { stepId: 'get-ready', completed: true })
+  const edits = plan.sections.map((section) => ({ id: section.id, sentences: section.sentences }))
+  edits[0].sentences = ['A sentence I wrote.']
+  await api.send('PUT', `/api/stories/${plan.id}/sections`, { sections: edits })
+
+  const response = await api.send('PUT', `/api/stories/${plan.id}/plan`, {
+    destination: 'Dr. Lee’s office',
+    visitType: 'dentist',
+    profile: { waiting: 'often', supports: ['timer'] },
+  })
+  assert.equal(response.status, 200)
+  const rebuilt = await response.json()
+  const sectionIds = rebuilt.sections.map((section) => section.id)
+  const checklistIds = rebuilt.checklist.map((item) => item.id)
+
+  assert.equal(rebuilt.id, plan.id)
+  assert.equal(rebuilt.title, 'A visit to Dr. Lee’s office')
+  assert.ok(sectionIds.includes('waiting') && !sectionIds.includes('sound'))
+  assert.ok(checklistIds.includes('practice-waiting') && !checklistIds.includes('preview-sounds'))
+  assert.equal(rebuilt.checklist.find((item) => item.id === 'read-story').completed, true)
+  assert.equal(rebuilt.checklist.find((item) => item.id === 'practice-waiting').completed, false)
+  assert.equal(rebuilt.journey.find((step) => step.id === 'get-ready').completed, true)
+  assert.equal(rebuilt.photos[0].name, 'door.png')
+  assert.notEqual(rebuilt.sections[0].sentences[0], 'A sentence I wrote.')
+  assert.ok(rebuilt.sections.every((section) => !section.edited))
+  assert.equal(rebuilt.createdAt, plan.createdAt)
+
+  const invalid = await api.send('PUT', `/api/stories/${plan.id}/plan`, { destination: 'X', profile: { sound: 'loud' } })
+  assert.equal(invalid.status, 400)
+  assert.equal((await api.get(`/api/stories/${plan.id}`).then((r) => r.json())).title, rebuilt.title)
+  assert.equal((await api.send('PUT', '/api/stories/missing/plan', { destination: 'X' })).status, 404)
+})

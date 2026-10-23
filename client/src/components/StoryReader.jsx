@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useSpeech } from '../useSpeech.js'
 import StoryPicture from './StoryPicture.jsx'
 
 export const EVERY_PLAN_REASON = 'Included in every plan'
@@ -9,6 +10,7 @@ export const EVERY_PLAN_REASON = 'Included in every plan'
 // the reader's place.
 function StoryReader({ story, focused = false, endActions = null }) {
   const [searchParams, setSearchParams] = useSearchParams()
+  const speech = useSpeech()
   const headingRef = useRef(null)
   const hasNavigated = useRef(false)
 
@@ -32,6 +34,7 @@ function StoryReader({ story, focused = false, endActions = null }) {
   }, [index, finished])
 
   function goTo(part) {
+    speech.stop()
     hasNavigated.current = true
     setSearchParams((current) => {
       const next = new URLSearchParams(current)
@@ -69,6 +72,32 @@ function StoryReader({ story, focused = false, endActions = null }) {
         ))}
       </div>
 
+      {speech.supported && (
+        <div className="speech-controls">
+          {speech.status === 'idle' && (
+            <button
+              className="button-link-secondary"
+              type="button"
+              onClick={() => speech.speak([page.title, ...page.sentences].filter(Boolean).join(' '))}
+            >
+              <StoryPicture sectionId="sound" className="button-icon" /> Read this part aloud
+            </button>
+          )}
+          {speech.status === 'speaking' && (
+            <button className="button-link-secondary" type="button" onClick={speech.pause}>Pause</button>
+          )}
+          {speech.status === 'paused' && (
+            <button className="button-link-secondary" type="button" onClick={speech.resume}>Resume</button>
+          )}
+          {speech.status !== 'idle' && (
+            <button className="button-link-secondary" type="button" onClick={speech.stop}>Stop</button>
+          )}
+          <span className="visually-hidden" role="status">
+            {speech.status === 'speaking' ? 'Reading aloud' : speech.status === 'paused' ? 'Reading paused' : ''}
+          </span>
+        </div>
+      )}
+
       <div className={hasPicture ? 'reader-part has-picture' : 'reader-part'}>
         {hasPicture && <StoryPicture sectionId={section.id} visitType={story.visitType} />}
         <div className="reader-words">
@@ -76,6 +105,7 @@ function StoryReader({ story, focused = false, endActions = null }) {
           {!focused && reason && reason !== EVERY_PLAN_REASON && (
             <p className="step-reason">{reason}</p>
           )}
+          {!focused && section?.edited && <p className="step-reason edited">You edited this part</p>}
           {index === 0 && story.photos.length > 0 && (
             <div className="photo-gallery">
               {story.photos.map((photo, photoIndex) => (

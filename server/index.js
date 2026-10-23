@@ -68,43 +68,88 @@ function cleanPhotos(value) {
 // A plan needs a destination and visit type; the profile is optional.
 // Stories saved by the earlier template generator are still read and shown,
 // but new stories are always created this way.
-function createPersonalizedStory(body) {
+// Checks the visit details and builds the plan. Used both when a plan is
+// created and when a caregiver changes its preferences.
+function buildPlanFromInput(body) {
   const destination = cleanName(body.destination, 'Destination', 100, true)
   const visitType = body.visitType ?? 'other'
   if (!isVisitType(visitType)) throw new ValidationError('Choose one of the available visit types.')
   const nickname = cleanName(body.nickname, 'Nickname', 40, false)
-  const photos = cleanPhotos(body.photos ?? [])
   const plan = buildPlan({ destination, visitType, profile: body.profile })
-  const now = new Date().toISOString()
-
   return {
-    id: crypto.randomUUID(),
     title: `A visit to ${destination}`,
     destination,
     placeType: getPlanOptions().visitTypes.find((type) => type.id === visitType).label,
     visitType,
     nickname,
-    readingLevel: '',
     profile: plan.profile,
-    triggers: [],
-    copingTools: [],
     sections: plan.sections,
     pages: sectionsToPages(plan.sections),
-    photos,
     checklist: plan.checklist.map((item) => ({ ...item, completed: false })),
     planDetails: {
       suggestions: plan.suggestions,
       questionsForVenue: plan.questionsForVenue,
       generalInfoNotice: plan.generalInfoNotice,
     },
+  }
+}
+
+function createPersonalizedStory(body) {
+  const photos = cleanPhotos(body.photos ?? [])
+  const now = new Date().toISOString()
+  return {
+    id: crypto.randomUUID(),
+    ...buildPlanFromInput(body),
+    readingLevel: '',
+    triggers: [],
+    copingTools: [],
+    photos,
     createdAt: now,
     updatedAt: now,
   }
 }
 
+const MAX_SENTENCES_PER_SECTION = 6
+const MAX_SENTENCE_LENGTH = 200
+
+// Keeps the sentence's own ending (., ?, or !) and adds a full stop if it has none.
+function cleanSentence(value, sectionTitle) {
+  if (typeof value !== 'string') throw new ValidationError(`Each sentence in “${sectionTitle}” must be text.`)
+  const cleaned = value.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim()
+  if (cleaned.length > MAX_SENTENCE_LENGTH) {
+    throw new ValidationError(`Sentences in “${sectionTitle}” must be ${MAX_SENTENCE_LENGTH} characters or fewer.`)
+  }
+  if (!cleaned) return ''
+  return /[.!?]["”')]*$/.test(cleaned) ? cleaned : `${cleaned}.`
+}
+
+// Checks a caregiver's edited story wording. The parts must stay the same and
+// in the same order; only their sentences change.
+function cleanEditedSections(value, savedSections) {
+  if (!Array.isArray(value) || value.length !== savedSections.length) {
+    throw new ValidationError('The edited story must keep the same parts.')
+  }
+  return savedSections.map((saved, index) => {
+    const edit = value[index]
+    if (!edit || edit.id !== saved.id) throw new ValidationError('The edited story must keep the same parts in order.')
+    if (!Array.isArray(edit.sentences)) throw new ValidationError(`“${saved.title}” must be a list of sentences.`)
+    const sentences = edit.sentences.map((sentence) => cleanSentence(sentence, saved.title)).filter(Boolean)
+    if (sentences.length === 0) throw new ValidationError(`“${saved.title}” needs at least one sentence.`)
+    if (sentences.length > MAX_SENTENCES_PER_SECTION) {
+      throw new ValidationError(`“${saved.title}” can have at most ${MAX_SENTENCES_PER_SECTION} sentences.`)
+    }
+    const changed = sentences.join('\n') !== saved.sentences.join('\n')
+    return { ...saved, sentences, edited: saved.edited === true || changed }
+  })
+}
+
 function createApp(database = createDatabase(databasePath)) {
   const app = express()
   app.use(express.json({ limit: '16mb' }))
+
+  const findStory = (id) => serializeStory(
+    database.prepare('SELECT * FROM stories WHERE id = ?').get(id),
+  )
 
   app.get('/api/health', (_request, response) => {
     response.json({ status: 'ok', service: 'ready-together-api' })
@@ -199,11 +244,67 @@ function createApp(database = createDatabase(databasePath)) {
     return response.json({ checklist })
   })
 
-  app.patch('/api/stories/:id/journey', (request, response) => {
-    const findStory = () => serializeStory(
-      database.prepare('SELECT * FROM stories WHERE id = ?').get(request.params.id),
+  // Saves a caregiver's edits to the story wording.
+  app.put('/api/stories/:id/sections', (request, response) => {
+    const story = findStory(request.params.id)
+    if (!story) return response.status(404).json({ error: 'Story not found.' })
+    if (!story.sections) {
+      return response.status(400).json({ error: 'This story was saved before editable plans. Change its preferences to rebuild it first.' })
+    }
+    let sections
+    try {
+      sections = cleanEditedSections(request.body?.sections, story.sections)
+    } catch (error) {
+      if (error instanceof ValidationError) return response.status(400).json({ error: error.message })
+      throw error
+    }
+    database.prepare('UPDATE stories SET sections_json = ?, pages_json = ?, updated_at = ? WHERE id = ?')
+      .run(JSON.stringify(sections), JSON.stringify(sectionsToPages(sections)), new Date().toISOString(), story.id)
+    return response.json(findStory(story.id))
+  })
+
+  // Rebuilds the plan from changed preferences. Checklist ticks are kept for
+  // items that are still in the plan; journey progress and photos are kept.
+  // Wording edits are replaced, and the form warns about that first.
+  app.put('/api/stories/:id/plan', (request, response) => {
+    const story = findStory(request.params.id)
+    if (!story) return response.status(404).json({ error: 'Story not found.' })
+    let rebuilt
+    try {
+      rebuilt = buildPlanFromInput(request.body ?? {})
+    } catch (error) {
+      if (error instanceof ValidationError || error instanceof ProfileError) {
+        return response.status(400).json({ error: error.message })
+      }
+      throw error
+    }
+    const wasCompleted = new Map(story.checklist.map((item) => [item.id, item.completed]))
+    const checklist = rebuilt.checklist.map((item) => ({ ...item, completed: wasCompleted.get(item.id) === true }))
+
+    database.prepare(`
+      UPDATE stories SET title = ?, destination = ?, place_type = ?, visit_type = ?, nickname = ?,
+        profile_json = ?, sections_json = ?, pages_json = ?, checklist_json = ?,
+        plan_details_json = ?, updated_at = ?
+      WHERE id = ?
+    `).run(
+      rebuilt.title,
+      rebuilt.destination,
+      rebuilt.placeType,
+      rebuilt.visitType,
+      rebuilt.nickname,
+      JSON.stringify(rebuilt.profile),
+      JSON.stringify(rebuilt.sections),
+      JSON.stringify(rebuilt.pages),
+      JSON.stringify(checklist),
+      JSON.stringify(rebuilt.planDetails),
+      new Date().toISOString(),
+      story.id,
     )
-    const story = findStory()
+    return response.json(findStory(story.id))
+  })
+
+  app.patch('/api/stories/:id/journey', (request, response) => {
+    const story = findStory(request.params.id)
     if (!story) return response.status(404).json({ error: 'Story not found.' })
     if (!story.journey) {
       return response.status(400).json({ error: 'This story was saved before visit journeys and does not have one.' })
@@ -223,7 +324,7 @@ function createApp(database = createDatabase(databasePath)) {
     ]))
     database.prepare('UPDATE stories SET journey_progress_json = ?, updated_at = ? WHERE id = ?')
       .run(JSON.stringify(progress), new Date().toISOString(), story.id)
-    return response.json({ journey: findStory().journey })
+    return response.json({ journey: findStory(story.id).journey })
   })
 
   app.get('/api/places', (_request, response) => {

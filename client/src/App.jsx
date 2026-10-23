@@ -37,7 +37,9 @@ function App() {
           <Route path="/stories" element={<StoriesPage />} />
           <Route path="/stories/:storyId" element={<StoryPage />} />
           <Route path="/stories/:storyId/read" element={<ReadTogetherPage />} />
-          <Route path="/create-story" element={<StoryFormPage />} />
+          {/* Different keys make React start the form fresh when switching between these two pages. */}
+          <Route path="/stories/:storyId/preferences" element={<StoryFormPage key="change-preferences" />} />
+          <Route path="/create-story" element={<StoryFormPage key="new-plan" />} />
           <Route path="/trip" element={<StoriesPage />} />
           <Route path="/trip/:storyId" element={<VisitJourneyPage />} />
           <Route path="/calm-break" element={<CalmBreakPage />} />

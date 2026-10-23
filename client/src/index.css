@@ -38,6 +38,11 @@ button, input, select, textarea {
   font: inherit;
 }
 
+/* Typed text stays regular weight even inside a bold label. */
+input, select, textarea {
+  font-weight: 400;
+}
+
 a {
   color: #2b6257;
 }

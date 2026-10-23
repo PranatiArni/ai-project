@@ -101,7 +101,8 @@ try {
   const waitFor = async (expression, timeout = 6000) => {
     const end = Date.now() + timeout
     while (Date.now() < end) {
-      try { if (await run(expression)) return true } catch { /* page is loading */ }
+      // Boolean() because page elements cannot be sent back as values.
+      try { if (await run(`Boolean(${expression})`)) return true } catch { /* page is loading */ }
       await sleep(100)
     }
     return false
@@ -124,7 +125,8 @@ try {
   // Sets a form field so React sees the change, like typing or choosing.
   const fill = (selector, value) => run(`(() => {
     const el = document.querySelector(${JSON.stringify(selector)})
-    const prototype = el instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype
+    const prototype = el instanceof HTMLSelectElement ? HTMLSelectElement.prototype
+      : el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
     Object.getOwnPropertyDescriptor(prototype, 'value').set.call(el, ${JSON.stringify(value)})
     el.dispatchEvent(new Event(el instanceof HTMLSelectElement ? 'change' : 'input', { bubbles: true }))
     return true
@@ -183,6 +185,36 @@ try {
   check('focus moves to the part heading', await run(`document.activeElement === document.querySelector('[tabindex="-1"]')`))
   check('the URL remembers the part', await run(`location.search === '?part=2'`))
 
+  console.log('— Read aloud')
+  // A test cannot hear speech, so record what would be spoken instead.
+  await run(`(() => {
+    window.spoken = []
+    window.speechCancels = 0
+    window.speechSynthesis.speak = (utterance) => window.spoken.push(utterance.text)
+    window.speechSynthesis.cancel = () => { window.speechCancels += 1 }
+    window.speechSynthesis.pause = () => {}
+    window.speechSynthesis.resume = () => {}
+  })()`)
+  check('the read-aloud button is offered', await run(`Boolean([...document.querySelectorAll('button')]
+    .find((button) => button.textContent.includes('Read this part aloud')))`))
+  await click('Read this part aloud')
+  check('it reads the current part’s title and words',
+    await waitFor(`window.spoken[0]?.startsWith('Arriving') && window.spoken[0].includes('front desk')`),
+    await run('window.spoken[0]'))
+  check('Pause and Stop appear while reading', await waitFor(`document.querySelector('.speech-controls').textContent.includes('Pause')
+    && document.querySelector('.speech-controls').textContent.includes('Stop')`))
+  await click('Pause')
+  check('Pause changes to Resume', await waitFor(`document.querySelector('.speech-controls').textContent.includes('Resume')`))
+  await click('Stop')
+  check('Stop returns to the read-aloud button',
+    await waitFor(`document.querySelector('.speech-controls').textContent.includes('Read this part aloud')`))
+  await click('Read this part aloud')
+  const cancelsBefore = await run('window.speechCancels')
+  await click('Next')
+  await waitFor(`${heading} === 'What might happen next'`)
+  check('moving to another part stops the reading', await run(`window.speechCancels > ${cancelsBefore}
+    && document.querySelector('.speech-controls').textContent.includes('Read this part aloud')`))
+
   console.log('— Visit journey')
   check('the journey opens on the requested step', await open(`/trip/${storyId}?step=arrive`, `${heading} === 'Arrive'`))
   await click('look for a quieter spot')
@@ -226,6 +258,43 @@ try {
   check('ticking on the plan page saves',
     (await api(`/api/stories/${storyId}`)).checklist.find((item) => item.id === 'read-story').completed)
   check('the plan header progress updates', await run(`document.querySelector('.plan-meta').textContent.includes('2 of')`))
+
+  console.log('— Editing the story wording')
+  await open(`/stories/${storyId}`, `document.querySelector('.story-reader')`)
+  await click('Edit wording')
+  await waitFor(`document.querySelector('.story-editor textarea')`)
+  await fill('.story-editor textarea', 'We are going to see Dr. Lee today\nIs it a short drive?')
+  await click('Save wording')
+  check('saving shows a confirmation', await waitFor(`document.querySelector('.done-note')?.textContent.includes('wording is saved')`))
+  check('the reader shows the new wording and marks the part as edited', await waitFor(
+    `document.querySelector('.reader-part').textContent.includes('We are going to see Dr. Lee today.')
+      && document.querySelector('.step-reason.edited')`))
+  let edited = await api(`/api/stories/${storyId}`)
+  check('the edit is saved, keeping the question mark',
+    edited.sections[0].edited && edited.sections[0].sentences.join(' ') === 'We are going to see Dr. Lee today. Is it a short drive?')
+
+  console.log('— Changing preferences')
+  await click('Change preferences')
+  check('the form opens with the plan’s choices filled in', await waitFor(
+    `document.querySelector('input[name=destination]')?.value === 'the dentist'
+      && document.querySelector('input[name=area-sound][value=often]')?.checked`))
+  check('it warns that wording edits will be replaced',
+    await run(`document.body.textContent.includes('Your wording edits will be replaced')`))
+  await choose('Waiting and transitions', 'Often hard')
+  await click('Save and rebuild plan')
+  await waitFor(`location.pathname === '/stories/${storyId}' && document.querySelector('.plan-header')`)
+  edited = await api(`/api/stories/${storyId}`)
+  check('the rebuilt plan follows the new choices', edited.sections.some((s) => s.id === 'waiting')
+    && edited.sections.some((s) => s.id === 'sound'))
+  check('checklist ticks are kept', edited.checklist.find((item) => item.id === 'read-story').completed)
+  check('the rebuilt story replaced the edited wording', !edited.sections[0].edited)
+
+  await click('Change preferences')
+  await waitFor(`document.querySelector('input[name=destination]')?.value === 'the dentist'`)
+  await click('Create a story')
+  check('"Create a story" opens an empty form, not the plan being changed', await waitFor(
+    `location.pathname === '/create-story' && document.querySelector('h1')?.textContent === 'Tell us about the visit'
+      && document.querySelector('input[name=destination]')?.value === ''`))
 
   console.log('— A second family with different preferences')
   const secondId = await createPlan({

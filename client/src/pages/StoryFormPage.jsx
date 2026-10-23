@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { readFileAsDataUrl, requestJson, splitEntries } from '../api.js'
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024
@@ -13,10 +13,14 @@ function defaultProfile(options) {
   }
 }
 
+// Creates a new plan at /create-story. At /stories/:storyId/preferences it
+// changes an existing plan's choices and rebuilds it instead.
 function StoryFormPage() {
+  const { storyId } = useParams()
   const navigate = useNavigate()
   const [options, setOptions] = useState(null)
   const [optionsError, setOptionsError] = useState('')
+  const [existing, setExisting] = useState(null)
   const [form, setForm] = useState({ destination: '', visitType: '', nickname: '' })
   const [profile, setProfile] = useState(null)
   const [otherSupports, setOtherSupports] = useState('')
@@ -24,18 +28,32 @@ function StoryFormPage() {
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
 
-  function loadOptions() {
-    requestJson('/api/plan-options')
-      .then((data) => {
-        setOptions(data)
-        setProfile((current) => current ?? defaultProfile(data))
-      })
-      .catch((loadError) => setOptionsError(loadError.message))
-  }
+  // "Try again" adds one to this, which runs the loading effect again.
+  const [loadAttempt, setLoadAttempt] = useState(0)
 
   useEffect(() => {
-    loadOptions()
-  }, [])
+    Promise.all([
+      requestJson('/api/plan-options'),
+      storyId ? requestJson(`/api/stories/${storyId}`) : null,
+    ])
+      .then(([data, story]) => {
+        setOptions(data)
+        if (story) {
+          setExisting(story)
+          setForm({
+            destination: story.destination,
+            visitType: story.visitType ?? '',
+            nickname: story.nickname ?? '',
+          })
+          // Stories from before personalization have no saved profile.
+          setProfile(story.profile ? { ...story.profile } : defaultProfile(data))
+          setOtherSupports(story.profile?.customSupports.join(', ') ?? '')
+        } else {
+          setProfile((current) => current ?? defaultProfile(data))
+        }
+      })
+      .catch((loadError) => setOptionsError(loadError.message))
+  }, [storyId, loadAttempt])
 
   function updateField(event) {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
@@ -82,16 +100,19 @@ function StoryFormPage() {
     }
     setGenerating(true)
     try {
-      const photoData = await Promise.all(photos.map(readFileAsDataUrl))
-      const story = await requestJson('/api/stories', {
-        method: 'POST',
-        signal: AbortSignal.timeout(25_000),
-        body: JSON.stringify({
-          ...form,
-          profile: { ...profile, customSupports },
-          photos: photoData,
-        }),
-      })
+      const details = { ...form, profile: { ...profile, customSupports } }
+      // Rebuilding keeps the plan's saved photos, so none are sent.
+      const story = existing
+        ? await requestJson(`/api/stories/${existing.id}/plan`, {
+          method: 'PUT',
+          signal: AbortSignal.timeout(25_000),
+          body: JSON.stringify(details),
+        })
+        : await requestJson('/api/stories', {
+          method: 'POST',
+          signal: AbortSignal.timeout(25_000),
+          body: JSON.stringify({ ...details, photos: await Promise.all(photos.map(readFileAsDataUrl)) }),
+        })
       navigate(`/stories/${story.id}`)
     } catch (submitError) {
       setError(submitError.name === 'TimeoutError'
@@ -113,7 +134,7 @@ function StoryFormPage() {
           type="button"
           onClick={() => {
             setOptionsError('')
-            loadOptions()
+            setLoadAttempt((attempt) => attempt + 1)
           }}
         >
           Try again
@@ -123,14 +144,31 @@ function StoryFormPage() {
   }
   if (!options || !profile) return <p className="page-section">Loading planning options…</p>
 
+  const hasEdits = existing?.sections?.some((section) => section.edited)
+
   return (
     <section className="page-section">
-      <p className="eyebrow">Plan a visit</p>
-      <h1>Tell us about the visit</h1>
-      <p>
-        Only the destination and kind of place are needed. Everything else is
-        optional and can make the plan fit your family better.
-      </p>
+      <p className="eyebrow">{existing ? existing.title : 'Plan a visit'}</p>
+      <h1>{existing ? 'Change preferences' : 'Tell us about the visit'}</h1>
+      {existing ? (
+        <p>
+          Saving rebuilds the story, journey, and checklist from these choices.
+          Checklist ticks are kept for items that stay in the plan, and your
+          photos are kept.
+        </p>
+      ) : (
+        <p>
+          Only the destination and kind of place are needed. Everything else is
+          optional and can make the plan fit your family better.
+        </p>
+      )}
+      {hasEdits && (
+        <p className="info-note">
+          <strong>Your wording edits will be replaced. </strong>
+          You changed some of the story&apos;s wording. Rebuilding writes the story
+          again from these choices, so those changes will not be kept.
+        </p>
+      )}
       <form className="form-panel" onSubmit={submitPlan}>
         <fieldset>
           <legend>The visit</legend>
@@ -251,23 +289,30 @@ function StoryFormPage() {
           </label>
         </fieldset>
 
-        <label>
-          Photos of the place (optional)
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            onChange={updatePhotos}
-          />
-          <span className="field-help">Choose up to four JPEG, PNG, or WEBP images, smaller than 2 MB each.</span>
-        </label>
+        {!existing && (
+          <label>
+            Photos of the place (optional)
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={updatePhotos}
+            />
+            <span className="field-help">Choose up to four JPEG, PNG, or WEBP images, smaller than 2 MB each.</span>
+          </label>
+        )}
         {photos.length > 0 && (
           <p className="field-help">Selected: {photos.map((photo) => photo.name).join(', ')}</p>
         )}
         {error && <p className="error-message" role="alert">{error}</p>}
-        <button className="primary-button" type="submit" disabled={generating}>
-          {generating ? 'Saving your plan…' : 'Create and save plan'}
-        </button>
+        <div className="button-row">
+          <button className="primary-button" type="submit" disabled={generating}>
+            {generating
+              ? 'Saving your plan…'
+              : existing ? 'Save and rebuild plan' : 'Create and save plan'}
+          </button>
+          {existing && <Link to={`/stories/${existing.id}`}>Cancel</Link>}
+        </div>
         <p className="note">
           Plans are saved in this app&apos;s own database. No outside services
           receive your answers.
