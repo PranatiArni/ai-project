@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://localhost:3001',
+      // API_URL lets the browser test run against its own API server.
+      '/api': process.env.API_URL || 'http://localhost:3001',
     },
   },
 })

@@ -22,7 +22,10 @@ Stories, photos, checklist progress, and ratings are stored in a local SQLite da
 npm test
 npm run lint
 npm run build
+npm run test:browser   # end-to-end test in headless Chrome
 ```
+
+`npm run test:browser` starts its own API and Vite servers with a throwaway database, so it does not touch your saved plans. It needs Google Chrome; set `CHROME_PATH` if Chrome is not in the default macOS location.
 
 The story writer is a self-contained template generator. It creates 5–10 short pages and pairs each entered trigger with a coping tool; it does not call a hosted AI model.
 
