@@ -28,7 +28,7 @@ function App() {
           <Link to="/">Home</Link>
           <Link to="/stories">Stories</Link>
           <Link to="/create-story">Create a story</Link>
-          <Link to="/places">Calm places</Link>
+          <Link to="/places">Places</Link>
         </nav>
       </header>
       <main>

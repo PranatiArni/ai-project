@@ -296,6 +296,39 @@ try {
     `location.pathname === '/create-story' && document.querySelector('h1')?.textContent === 'Tell us about the visit'
       && document.querySelector('input[name=destination]')?.value === ''`))
 
+  console.log('— Places and family reports')
+  await open('/places', `document.querySelectorAll('.place-card').length === 3`)
+  check('example places are labeled and have no invented scores', await run(`[...document.querySelectorAll('.place-card')]
+    .every((card) => card.textContent.includes('Example place') && card.textContent.includes('No family reports yet'))`))
+  const firstCard = `document.querySelector('.place-card')`
+  await click('Share your family’s experience', firstCard)
+  await waitFor(`${firstCard}.querySelector('.report-form')`)
+  await click('Save report', firstCard)
+  check('an untouched report form records nothing and explains why',
+    await waitFor(`${firstCard}.querySelector('[role=alert]')?.textContent.includes('at least one')`))
+  check('nothing was saved', (await api('/api/places')).every((place) => place.reportCount === 0))
+  await fill('.report-form select[name=lighting]', '2')
+  await choose('Was there a quiet place', 'Yes')
+  await fill('.report-form textarea', 'Quiet benches by the pond')
+  await click('Save report', firstCard)
+  check('a report is saved and thanked', await waitFor(`document.body.textContent.includes('Your report was saved')`))
+  const reportedCard = `[...document.querySelectorAll('.place-card')].find((card) => card.textContent.includes('1 report,'))`
+  check('the card shows it as a family report with the answers given', await waitFor(`${reportedCard}
+    && ${reportedCard}.textContent.includes('Reported by families')
+    && ${reportedCard}.textContent.includes('1 of 1 family found one')
+    && ${reportedCard}.textContent.includes('Quiet benches by the pond')`))
+  check('unanswered categories stay Unknown',
+    await run(`${reportedCard}.querySelectorAll('.unknown-text').length === 3`))
+
+  await click('Add a place')
+  await waitFor(`document.querySelector('.add-place-form')`)
+  await fill('.add-place-form input', 'Maple Street Dental')
+  await fill('.add-place-form select', 'Dentist')
+  await click('Add place', `document.querySelector('.add-place-form')`)
+  check('a family can add a place, and it is labeled as theirs', await waitFor(
+    `[...document.querySelectorAll('.place-card')].some((card) => card.textContent.includes('Maple Street Dental')
+      && card.textContent.includes('Added by a family'))`))
+
   console.log('— A second family with different preferences')
   const secondId = await createPlan({
     destination: 'the dentist',

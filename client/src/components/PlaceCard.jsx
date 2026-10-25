@@ -1,82 +1,192 @@
 import { useState } from 'react'
 import { requestJson } from '../api.js'
 
-const ratingDimensions = [
-  { name: 'noise', label: 'Noise' },
-  { name: 'crowds', label: 'Crowds' },
-  { name: 'waits', label: 'Waits' },
+const SCORE_OPTIONS = [
+  { value: '1', label: '1 — calm' },
+  { value: '2', label: '2 — a little challenging' },
+  { value: '3', label: '3 — mixed' },
+  { value: '4', label: '4 — challenging' },
+  { value: '5', label: '5 — very challenging' },
 ]
 
-function PlaceCard({ place, onRated }) {
-  const [ratings, setRatings] = useState({ noise: '1', crowds: '1', waits: '1' })
+const formatDate = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
+const reportWord = (count) => `${count} report${count === 1 ? '' : 's'}`
+
+// Every answer starts as "not sure", so an untouched form never records a score.
+function ReportForm({ place, categories, onSaved, onCancel }) {
+  const [scores, setScores] = useState(() => Object.fromEntries(categories.map(({ id }) => [id, ''])))
+  const [quietSpace, setQuietSpace] = useState('not-sure')
+  const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
-  function updateRating(event) {
-    setRatings((current) => ({ ...current, [event.target.name]: event.target.value }))
-  }
-
-  async function submitRating(event) {
+  async function submit(event) {
     event.preventDefault()
-    setSaving(true)
     setError('')
-    setMessage('')
+    const answered = Object.values(scores).some(Boolean) || quietSpace !== 'not-sure' || note.trim()
+    if (!answered) {
+      setError('Answer at least one question, or add a note.')
+      return
+    }
+    setSaving(true)
     try {
       const result = await requestJson(`/api/places/${place.id}/ratings`, {
         method: 'POST',
         body: JSON.stringify({
-          noise: Number(ratings.noise),
-          crowds: Number(ratings.crowds),
-          waits: Number(ratings.waits),
+          ...Object.fromEntries(Object.entries(scores).map(([id, value]) => [id, value ? Number(value) : null])),
+          quietSpace,
+          note: note.trim() || null,
         }),
       })
-      onRated(result.places)
-      setMessage(result.message)
-    } catch (submitError) {
-      setError(submitError.message)
-    } finally {
+      onSaved(result)
+    } catch (saveError) {
+      setError(saveError.message)
       setSaving(false)
     }
   }
 
   return (
-    <article className="content-card place-card">
-      <div className="place-heading">
-        <div>
-          <h2>{place.name}</h2>
-          <p>{place.placeType}</p>
-        </div>
-        <p className="score">
-          <strong>{place.calmScore.toFixed(1)}</strong>
-          <span> / 5 calm</span>
-        </p>
-      </div>
-      <p className="field-help">
-        {place.ratingCount > 0
-          ? `Based on ${place.ratingCount} family rating${place.ratingCount === 1 ? '' : 's'}.`
-          : 'Sample score; no family ratings yet.'}
-        {' '}For each rating, 1 is calm and 5 is very challenging.
-      </p>
-      <form className="rating-form" onSubmit={submitRating}>
-        {ratingDimensions.map(({ name, label }) => (
-          <label key={name}>
+    <form className="report-form" onSubmit={submit}>
+      <p className="field-help">Answer only what you noticed. Anything left as “Not sure” is not counted.</p>
+      <div className="report-scores">
+        {categories.map(({ id, label }) => (
+          <label key={id}>
             {label}
-            <select name={name} value={ratings[name]} onChange={updateRating}>
-              <option value="1">1 — calm</option>
-              <option value="2">2 — a little challenging</option>
-              <option value="3">3 — medium</option>
-              <option value="4">4 — challenging</option>
-              <option value="5">5 — very challenging</option>
+            <select
+              name={id}
+              value={scores[id]}
+              onChange={(event) => setScores((current) => ({ ...current, [id]: event.target.value }))}
+            >
+              <option value="">Not sure</option>
+              {SCORE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
           </label>
         ))}
-        <button type="submit" disabled={saving}>
-          {saving ? 'Saving rating…' : 'Submit rating'}
-        </button>
-      </form>
-      {message && <p role="status">{message}</p>}
+      </div>
+      <fieldset className="choice-group">
+        <legend>Was there a quiet place to take a break?</legend>
+        <div className="choice-row">
+          {[['yes', 'Yes'], ['no', 'No'], ['not-sure', 'Not sure']].map(([value, label]) => (
+            <label className="choice" key={value}>
+              <input
+                type="radio"
+                name={`quiet-${place.id}`}
+                value={value}
+                checked={quietSpace === value}
+                onChange={() => setQuietSpace(value)}
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <label>
+        Anything other families might like to know? (optional)
+        <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={280} rows={3} />
+        <span className="field-help">Up to 280 characters. Please do not include names or other personal details.</span>
+      </label>
       {error && <p className="error-message" role="alert">{error}</p>}
+      <div className="button-row">
+        <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save report'}</button>
+        <button className="button-link-secondary" type="button" onClick={onCancel}>Cancel</button>
+      </div>
+    </form>
+  )
+}
+
+function PlaceCard({ place, options, onReported }) {
+  const [reporting, setReporting] = useState(false)
+  const [message, setMessage] = useState('')
+  const quietReports = place.quietSpace.yes + place.quietSpace.no
+
+  return (
+    <article className="content-card place-card">
+      <div className="place-heading">
+        <div>
+          <h3>{place.name}</h3>
+          <p className="place-type">{place.placeType}</p>
+        </div>
+        <span className={`source-badge ${place.origin}`}>
+          {place.origin === 'example' ? 'Example place — not real' : 'Added by a family'}
+        </span>
+      </div>
+
+      {place.reportCount > 0 ? (
+        <p className="place-summary">
+          <strong>Calm score {place.calmScore.toFixed(1)} of 5</strong>
+          {' · '}<span className="source-badge family">Reported by families</span>
+          {' '}{reportWord(place.reportCount)}, latest {formatDate(place.latestReportAt)}
+        </p>
+      ) : (
+        <p className="place-summary">
+          <span className="source-badge unknown">Unknown</span> No family reports yet.
+        </p>
+      )}
+      {place.reportCount > 0 && place.reportCount < options.fewReports && (
+        <p className="field-help">Based on only {reportWord(place.reportCount)}, so it may not reflect most visits.</p>
+      )}
+      {place.outdated && (
+        <p className="info-note">The latest report is more than a year old and may be out of date.</p>
+      )}
+
+      <dl className="place-categories">
+        {place.categories.map((category) => (
+          <div key={category.id}>
+            <dt>{category.label}</dt>
+            <dd>
+              {category.reports > 0
+                ? <><strong>{category.summary}</strong> · average {category.average.toFixed(1)} of 5 · {reportWord(category.reports)}</>
+                : <span className="unknown-text">Unknown</span>}
+            </dd>
+          </div>
+        ))}
+        <div>
+          <dt>Quiet place for a break</dt>
+          <dd>
+            {quietReports > 0
+              ? <><strong>{place.quietSpace.yes} of {quietReports}</strong> {quietReports === 1 ? 'family' : 'families'} found one</>
+              : <span className="unknown-text">Unknown</span>}
+          </dd>
+        </div>
+      </dl>
+
+      {place.notes.length > 0 && (
+        <section className="place-notes" aria-label={`Family observations about ${place.name}`}>
+          <h4>Family observations</h4>
+          <ul>
+            {place.notes.map((note) => (
+              <li key={`${note.reportedAt}-${note.text}`}>
+                “{note.text}” <span className="field-help">{formatDate(note.reportedAt)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <p className="done-note" role="status">{message}</p>
+      {reporting ? (
+        <ReportForm
+          place={place}
+          categories={options.categories}
+          onCancel={() => setReporting(false)}
+          onSaved={(result) => {
+            onReported(result.places)
+            setReporting(false)
+            setMessage(`✓ ${result.message}`)
+          }}
+        />
+      ) : (
+        <button
+          className="button-link-secondary"
+          type="button"
+          onClick={() => {
+            setMessage('')
+            setReporting(true)
+          }}
+        >
+          Share your family’s experience
+        </button>
+      )}
     </article>
   )
 }

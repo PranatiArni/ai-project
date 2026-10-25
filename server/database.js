@@ -23,6 +23,33 @@ const MIGRATIONS = [
   `
     ALTER TABLE stories ADD COLUMN journey_progress_json TEXT;
   `,
+  // 3: Trustworthy place reports. Places record whether they are examples
+  // (every place before this migration was a seeded example) or added by a
+  // family. Ratings are rebuilt so each answer can be left as "not sure"
+  // (NULL), with lighting, quiet space, and a short note added. Existing
+  // ratings are copied across unchanged.
+  `
+    ALTER TABLE places ADD COLUMN origin TEXT NOT NULL DEFAULT 'family';
+    ALTER TABLE places ADD COLUMN created_at TEXT;
+    UPDATE places SET origin = 'example';
+
+    CREATE TABLE ratings_v3 (
+      id TEXT PRIMARY KEY,
+      place_id TEXT NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+      noise INTEGER CHECK(noise BETWEEN 1 AND 5),
+      lighting INTEGER CHECK(lighting BETWEEN 1 AND 5),
+      crowds INTEGER CHECK(crowds BETWEEN 1 AND 5),
+      waits INTEGER CHECK(waits BETWEEN 1 AND 5),
+      quiet_space TEXT CHECK(quiet_space IN ('yes', 'no')),
+      note TEXT,
+      created_at TEXT NOT NULL
+    );
+    INSERT INTO ratings_v3 (id, place_id, noise, crowds, waits, created_at)
+      SELECT id, place_id, noise, crowds, waits, created_at FROM ratings;
+    DROP TABLE ratings;
+    ALTER TABLE ratings_v3 RENAME TO ratings;
+    CREATE INDEX ratings_by_place ON ratings(place_id, created_at);
+  `,
 ]
 
 export const schemaVersion = MIGRATIONS.length
@@ -81,16 +108,18 @@ export function createDatabase(databasePath = path.resolve(here, '../.data/app.s
   `)
   migrate(db)
 
-  const samplePlacesPath = path.resolve(here, '../client/src/data/samplePlaces.json')
-  const samplePlaces = JSON.parse(fs.readFileSync(samplePlacesPath, 'utf8'))
+  // Example places for trying the app. They are not real venues and start with
+  // no reports. sample_calm_score is an old required column that is no longer
+  // used, so it is set to 0.
+  const examplePlaces = JSON.parse(fs.readFileSync(path.resolve(here, 'data/examplePlaces.json'), 'utf8'))
   const insertPlace = db.prepare(`
-    INSERT OR IGNORE INTO places (id, name, place_type, sample_calm_score)
-    VALUES (@id, @name, @placeType, @calmScore)
+    INSERT OR IGNORE INTO places (id, name, place_type, sample_calm_score, origin)
+    VALUES (@id, @name, @placeType, 0, 'example')
   `)
   const seedPlaces = db.transaction((places) => {
     for (const place of places) insertPlace.run(place)
   })
-  seedPlaces(samplePlaces)
+  seedPlaces(examplePlaces)
 
   return db
 }
@@ -153,27 +182,4 @@ export function listStorySummaries(db) {
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
   }))
-}
-
-export function listPlaces(db) {
-  return db.prepare(`
-    SELECT id, name, place_type, sample_calm_score, noise_sum, crowds_sum,
-      waits_sum, rating_count
-    FROM places
-  `).all().map((place) => {
-    const calmScore = place.rating_count
-      ? Math.round(
-        (6 - (place.noise_sum + place.crowds_sum + place.waits_sum)
-          / (place.rating_count * 3)) * 10,
-      ) / 10
-      : place.sample_calm_score
-
-    return {
-      id: place.id,
-      name: place.name,
-      placeType: place.place_type,
-      calmScore,
-      ratingCount: place.rating_count,
-    }
-  }).sort((a, b) => b.calmScore - a.calmScore || a.name.localeCompare(b.name))
 }

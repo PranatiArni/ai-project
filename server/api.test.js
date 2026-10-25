@@ -335,3 +335,30 @@ test('changing preferences rebuilds the plan and keeps progress where it still a
   assert.equal((await api.get(`/api/stories/${plan.id}`).then((r) => r.json())).title, rebuilt.title)
   assert.equal((await api.send('PUT', '/api/stories/missing/plan', { destination: 'X' })).status, 404)
 })
+
+test('place reports and new places go through the API with clear errors', async (context) => {
+  const api = await startTestServer(context)
+  const options = await (await api.get('/api/place-options')).json()
+  assert.ok(options.placeTypes.includes('Dentist'))
+  assert.deepEqual(options.categories.map((category) => category.id), ['noise', 'lighting', 'crowds', 'waits'])
+
+  const reported = await api.send('POST', '/api/places/greenway-garden/ratings', {
+    lighting: 2, quietSpace: 'yes', note: '<b>Shady</b> benches near the pond',
+  })
+  assert.equal(reported.status, 201)
+  const garden = (await reported.json()).places.find((place) => place.id === 'greenway-garden')
+  assert.equal(garden.reportCount, 1)
+  assert.equal(garden.notes[0].text, '<b>Shady</b> benches near the pond')
+
+  const empty = await api.send('POST', '/api/places/greenway-garden/ratings', {})
+  assert.equal(empty.status, 400)
+  assert.match((await empty.json()).error, /at least one/)
+  assert.equal((await api.send('POST', '/api/places/nowhere/ratings', { noise: 1 })).status, 404)
+
+  const added = await api.send('POST', '/api/places', { name: 'Elm Park', placeType: 'Park or garden' })
+  assert.equal(added.status, 201)
+  const { place } = await added.json()
+  assert.equal(place.origin, 'family')
+  assert.equal((await api.send('POST', '/api/places', { name: 'ELM PARK', placeType: 'Other' })).status, 409)
+  assert.equal((await api.send('POST', '/api/places', { name: 'Elm', placeType: 'Spaceport' })).status, 400)
+})

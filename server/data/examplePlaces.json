@@ -1,0 +1,5 @@
+[
+  { "id": "riverside-library", "name": "Riverside Library", "placeType": "Library" },
+  { "id": "greenway-garden", "name": "Greenway Garden", "placeType": "Garden" },
+  { "id": "northside-market", "name": "Northside Market", "placeType": "Grocery store" }
+]

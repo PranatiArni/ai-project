@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
-import { createDatabase, listPlaces, listStorySummaries, serializeStory } from './database.js'
+import { createDatabase, listStorySummaries, serializeStory } from './database.js'
 import {
   buildPlan,
   getPlanOptions,
@@ -10,6 +10,18 @@ import {
   ProfileError,
   sectionsToPages,
 } from './personalization.js'
+import {
+  addPlace,
+  addReport,
+  cleanNewPlace,
+  cleanReport,
+  DuplicatePlaceError,
+  FEW_REPORTS,
+  listPlaces,
+  PLACE_TYPES,
+  PlaceInputError,
+  RATING_CATEGORIES,
+} from './places.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const databasePath = process.env.DATABASE_PATH || path.resolve(here, '../.data/app.sqlite')
@@ -327,38 +339,42 @@ function createApp(database = createDatabase(databasePath)) {
     return response.json({ journey: findStory(story.id).journey })
   })
 
+  app.get('/api/place-options', (_request, response) => {
+    response.json({ placeTypes: PLACE_TYPES, categories: RATING_CATEGORIES, fewReports: FEW_REPORTS })
+  })
+
   app.get('/api/places', (_request, response) => {
     response.json(listPlaces(database))
+  })
+
+  app.post('/api/places', (request, response) => {
+    let place
+    try {
+      place = cleanNewPlace(request.body, database)
+    } catch (error) {
+      if (error instanceof PlaceInputError) return response.status(400).json({ error: error.message })
+      if (error instanceof DuplicatePlaceError) return response.status(409).json({ error: error.message })
+      throw error
+    }
+    const id = addPlace(database, place)
+    const places = listPlaces(database)
+    return response.status(201).json({ place: places.find((item) => item.id === id), places })
   })
 
   app.post('/api/places/:id/ratings', (request, response) => {
     const place = database.prepare('SELECT id FROM places WHERE id = ?').get(request.params.id)
     if (!place) return response.status(404).json({ error: 'Place not found.' })
-
-    const { noise, crowds, waits } = request.body ?? {}
-    if (![noise, crowds, waits].every(
-      (score) => Number.isInteger(score) && score >= 1 && score <= 5,
-    )) {
-      return response.status(400).json({ error: 'Noise, crowds, and waits must each be a score from 1 to 5.' })
+    let report
+    try {
+      report = cleanReport(request.body)
+    } catch (error) {
+      if (error instanceof PlaceInputError) return response.status(400).json({ error: error.message })
+      throw error
     }
-
-    const addRating = database.transaction(() => {
-      database.prepare(`
-        INSERT INTO ratings (id, place_id, noise, crowds, waits, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(crypto.randomUUID(), place.id, noise, crowds, waits, new Date().toISOString())
-      database.prepare(`
-        UPDATE places
-        SET noise_sum = noise_sum + ?, crowds_sum = crowds_sum + ?,
-          waits_sum = waits_sum + ?, rating_count = rating_count + 1
-        WHERE id = ?
-      `).run(noise, crowds, waits, place.id)
-    })
-    addRating()
-
+    addReport(database, place.id, report)
     return response.status(201).json({
       places: listPlaces(database),
-      message: 'Rating saved. Place rankings updated.',
+      message: 'Thank you. Your report was saved.',
     })
   })
 
