@@ -47,12 +47,12 @@ function StoryReader({ story, focused = false, endActions = null }) {
     return (
       <div className={focused ? 'story-reader focused' : 'story-reader'}>
         <div className="reader-part">
-          <Heading ref={headingRef} tabIndex={-1}>That is the whole story</Heading>
-          <p>You can read it again any time.</p>
+          <Heading ref={headingRef} tabIndex={-1}>The end</Heading>
+          <p>You can read it again anytime.</p>
         </div>
         <div className="reader-nav">
           <button className="button-link-secondary" type="button" onClick={() => goTo(1)}>
-            Read again from the start
+            Start over
           </button>
           {endActions}
         </div>
@@ -80,7 +80,7 @@ function StoryReader({ story, focused = false, endActions = null }) {
               type="button"
               onClick={() => speech.speak([page.title, ...page.sentences].filter(Boolean).join(' '))}
             >
-              <StoryPicture sectionId="sound" className="button-icon" /> Read this part aloud
+              <StoryPicture sectionId="sound" className="button-icon" /> Read aloud
             </button>
           )}
           {speech.status === 'speaking' && (

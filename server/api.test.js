@@ -144,7 +144,7 @@ test('personalized plans are created, saved, and reloaded without a nickname', a
   assert.equal(created.pages[0].title, 'Getting ready')
   assert.ok(created.checklist.every((item) => item.completed === false && item.reason && item.phase))
   assert.ok(created.questionsForVenue.length > 0)
-  assert.match(created.generalInfoNotice, /does not include verified details/)
+  assert.match(created.generalInfoNotice, /doesn’t know anything specific/)
 
   const reloaded = await (await api.get(`/api/stories/${created.id}`)).json()
   assert.deepEqual(reloaded, created)

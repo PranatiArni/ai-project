@@ -162,7 +162,7 @@ test('unknown visit types and missing destinations fall back safely', () => {
   const plan = buildPlan({ destination: '   ', visitType: 'moon-base' })
   assert.equal(plan.visitType, 'other')
   assert.match(storyText(plan), /I am going to this place\./)
-  assert.match(plan.generalInfoNotice, /does not include verified details/)
+  assert.match(plan.generalInfoNotice, /doesn’t know anything specific/)
 })
 
 test('general place descriptions use hedged wording, not promises', () => {

@@ -62,7 +62,7 @@ is needed, and the child's name is optional.
 - **Personalized plans.** Two families going to the same dentist get
   different story parts, checklists, and questions to ask, depending on what
   they chose. Every personalized part shows why it was included, such as
-  "You marked sound and unexpected noise as often hard."
+  "Because sounds can be hard."
 - **Picture story.** One part at a time, with Back and Next, line drawings for
   each part and support, a quiet view, read aloud (browser speech), and a
   print layout that works as a paper picture schedule.
@@ -113,7 +113,7 @@ rules, and the app does not build a profile of the child.
 ## Trustworthy place information
 
 - Nothing about a place is invented. The three example places are labeled
-  "Example place, not real" and start with no reports.
+  "Example place (not real)" and start with no reports.
 - Each place says where its information came from: **Reported by families**
   (with report counts and the latest date) or **Unknown** (no reports yet).
   Ready Together has no verified or venue-provided information, and the page

@@ -85,7 +85,7 @@ function StoryPage() {
         </p>
         <div className="button-row plan-actions">
           <Link className="button-link" to={`/trip/${story.id}`}>
-            {story.journey ? 'Start the visit journey' : 'Open visit checklist'}
+            {story.journey ? 'Open the steps for the day' : 'Open the checklist'}
           </Link>
           <button className="button-link-secondary" type="button" onClick={() => window.print()}>
             Print plan
@@ -95,8 +95,7 @@ function StoryPage() {
 
       {story.generalInfoNotice && (
         <p className="info-note">
-          <strong>About this plan: </strong>
-          {story.generalInfoNotice} Check anything important with the place directly.
+          <strong>Good to know: </strong> {story.generalInfoNotice}
         </p>
       )}
 
@@ -104,20 +103,20 @@ function StoryPage() {
         <section className="previous-visit" aria-labelledby="previous-visit-heading">
           <h2 id="previous-visit-heading">From your last visit</h2>
           <p className="field-help">
-            You chose to bring these notes from{' '}
+            From{' '}
             <Link to={`/stories/${story.previousVisit.fromStoryId}`}>{story.previousVisit.title}</Link>,
             saved {new Date(story.previousVisit.reflectedAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}.
           </p>
           <dl className="reflection-summary">
             {story.previousVisit.changeNextTime && (
               <div>
-                <dt>What you wanted to change</dt>
+                <dt>Change this time</dt>
                 <dd className="pre-wrap">{story.previousVisit.changeNextTime}</dd>
               </div>
             )}
             {story.previousVisit.notesForNextVisit && (
               <div>
-                <dt>Notes for this visit</dt>
+                <dt>Notes</dt>
                 <dd className="pre-wrap">{story.previousVisit.notesForNextVisit}</dd>
               </div>
             )}
@@ -128,21 +127,21 @@ function StoryPage() {
       {choices && (
         <section className="choices-summary" aria-labelledby="choices-heading">
           <div className="story-panel-heading">
-            <h2 id="choices-heading">Made for your choices</h2>
+            <h2 id="choices-heading">Your answers</h2>
             <Link className="screen-only" to={`/stories/${story.id}/preferences`}>Change preferences</Link>
           </div>
           <dl>
             <div>
-              <dt>Areas to prepare for</dt>
-              <dd>{choices.areas.length > 0 ? choices.areas.join(', ') : 'None chosen — this is the general plan'}</dd>
+              <dt>Hard for your child</dt>
+              <dd>{choices.areas.length > 0 ? choices.areas.join(', ') : 'Nothing marked'}</dd>
             </div>
             <div>
-              <dt>Supports</dt>
-              <dd>{choices.supports.length > 0 ? choices.supports.join(', ') : 'None chosen'}</dd>
+              <dt>Things that help</dt>
+              <dd>{choices.supports.length > 0 ? choices.supports.join(', ') : 'None'}</dd>
             </div>
             {choices.detail && (
               <div>
-                <dt>Story detail</dt>
+                <dt>Story length</dt>
                 <dd>{choices.detail}</dd>
               </div>
             )}
@@ -153,10 +152,10 @@ function StoryPage() {
       <div className="plan-layout">
         <section className="story-panel" aria-labelledby="story-heading">
           <div className="story-panel-heading">
-            <h2 id="story-heading">Preparation story</h2>
+            <h2 id="story-heading">The story</h2>
             {!editing && (
               <div className="story-panel-links">
-                <Link to={`/stories/${story.id}/read`}>Read together in a quiet view</Link>
+                <Link to={`/stories/${story.id}/read`}>Open reading view</Link>
                 {story.sections ? (
                   <button
                     className="button-link-secondary"
@@ -171,7 +170,7 @@ function StoryPage() {
                 ) : (
                   // Stories from before personalization can be rebuilt to get
                   // pictures, editing, and a visit journey.
-                  <Link to={`/stories/${story.id}/preferences`}>Rebuild with preferences</Link>
+                  <Link to={`/stories/${story.id}/preferences`}>Update this plan</Link>
                 )}
               </div>
             )}
@@ -184,12 +183,12 @@ function StoryPage() {
               onSaved={(updated) => {
                 setStory(updated)
                 setEditing(false)
-                setSavedMessage('✓ Your wording is saved.')
+                setSavedMessage('✓ Saved.')
               }}
             />
           ) : (
             <>
-              <p className="field-help screen-only">One part at a time. Read it together, as often as is helpful.</p>
+              <p className="field-help screen-only">Read it together as many times as you like.</p>
               <StoryReader story={story} />
             </>
           )}
@@ -238,7 +237,7 @@ function StoryPage() {
 
           {story.questionsForVenue.length > 0 && (
             <section aria-labelledby="questions-heading">
-              <h2 id="questions-heading">Questions to ask the place</h2>
+              <h2 id="questions-heading">Questions to ask ahead of time</h2>
               <ul className="plain-list">
                 {story.questionsForVenue.map((question) => <li key={question}>{question}</li>)}
               </ul>
@@ -247,11 +246,11 @@ function StoryPage() {
 
           {story.suggestions.length > 0 && (
             <section aria-labelledby="ideas-heading">
-              <h2 id="ideas-heading">Ideas you might consider</h2>
+              <h2 id="ideas-heading">Other ideas</h2>
               <ul className="plain-list">
                 {story.suggestions.map((suggestion) => <li key={suggestion.id}>{suggestion.text}</li>)}
               </ul>
-              <p className="field-help">Only if they suit your family. Nothing here is required.</p>
+              <p className="field-help">Only if they’d help.</p>
             </section>
           )}
         </aside>

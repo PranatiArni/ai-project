@@ -1,21 +1,19 @@
 import { Link } from 'react-router-dom'
 
 const steps = [
-  'Tell us where you are going and anything that can feel hard, like sudden sounds or waiting.',
-  'Read a short picture story together, one part at a time.',
-  'On the day, follow the visit journey step by step. A break is always an option.',
-  'Afterward, note what helped, so the next plan can start from what you learned.',
+  'Tell us where you’re going and what’s hard for your child.',
+  'Read the picture story together.',
+  'On the day, go through it step by step. Take a break whenever you need one.',
+  'Afterward, write down what helped for next time.',
 ]
 
 function HomePage() {
   return (
     <section className="welcome-panel">
-      <p className="eyebrow">Preparing for new places, together</p>
+      <p className="eyebrow">Getting ready for new places</p>
       <h1>Ready Together</h1>
       <p>
-        Help your child get ready for an unfamiliar place, such as the dentist,
-        a haircut, or a busy store. Ready Together turns your answers into a
-        short picture story, a checklist, and a plan for the day.
+        Going to the dentist, getting a haircut, or heading to a busy store? Answer a few questions and get a picture story, a checklist, and a plan for the day, made for your child.
       </p>
       <div className="button-row">
         <Link className="button-link" to="/create-story">Plan a visit</Link>
@@ -26,9 +24,7 @@ function HomePage() {
         {steps.map((step) => <li key={step}>{step}</li>)}
       </ol>
       <p className="note">
-        Plans are built from your answers with clear, fixed rules, not AI. No
-        account is needed, and nothing is sent to outside services. Ready
-        Together is a planning tool, not medical or therapy advice.
+        No account needed, and your plans stay in the app. This isn’t medical advice.
       </p>
     </section>
   )

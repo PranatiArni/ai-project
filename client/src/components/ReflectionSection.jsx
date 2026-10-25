@@ -50,7 +50,7 @@ function ReflectionSection({ story, onSaved, startOpen = false }) {
       })
       onSaved(updated)
       setEditing(false)
-      setMessage('✓ Your notes are saved.')
+      setMessage('✓ Saved.')
     } catch (saveError) {
       setError(`Your notes were not saved. ${saveError.message}`)
     } finally {
@@ -62,15 +62,14 @@ function ReflectionSection({ story, onSaved, startOpen = false }) {
     <section id="reflection" className="reflection-panel" ref={sectionRef} aria-labelledby="reflection-heading">
       <h2 id="reflection-heading">After the visit</h2>
       <p className="field-help">
-        Optional notes for you, saved with this plan. Ready Together does not
-        analyze them or build a profile of your child.
+        Just for you. Write down what worked so next time is easier.
       </p>
       <p className="done-note" role="status">{message}</p>
 
       {editing ? (
         <form className="form-panel reflection-form" onSubmit={save}>
           <fieldset>
-            <legend>Which parts of the preparation helped?</legend>
+            <legend>What helped?</legend>
             <div className="support-grid">
               {choices.helped.map((part) => (
                 <label className="choice" key={part.id}>
@@ -86,7 +85,7 @@ function ReflectionSection({ story, onSaved, startOpen = false }) {
           </fieldset>
           {choices.supports.length > 0 && (
             <fieldset>
-              <legend>Which supports did you use?</legend>
+              <legend>What did you use?</legend>
               <div className="support-grid">
                 {choices.supports.map((support) => (
                   <label className="choice" key={support}>
@@ -115,7 +114,7 @@ function ReflectionSection({ story, onSaved, startOpen = false }) {
             />
           </label>
           <label>
-            Notes for a future visit
+            Notes for next time
             <textarea
               name="notesForNextVisit"
               value={draft.notesForNextVisit}
@@ -123,7 +122,7 @@ function ReflectionSection({ story, onSaved, startOpen = false }) {
               maxLength={500}
               rows={3}
             />
-            <span className="field-help">Up to 500 characters each. Every question is optional.</span>
+            <span className="field-help">All of this is optional.</span>
           </label>
           {error && <p className="error-message" role="alert">{error}</p>}
           <div className="button-row">
@@ -138,19 +137,19 @@ function ReflectionSection({ story, onSaved, startOpen = false }) {
           <dl className="reflection-summary">
             <div>
               <dt>What helped</dt>
-              <dd>{helpedTitles(story).join(', ') || 'Not noted'}</dd>
+              <dd>{helpedTitles(story).join(', ') || 'None'}</dd>
             </div>
             <div>
-              <dt>Supports used</dt>
-              <dd>{reflection.supportsUsed.join(', ') || 'Not noted'}</dd>
+              <dt>Things used</dt>
+              <dd>{reflection.supportsUsed.join(', ') || 'None'}</dd>
             </div>
             <div>
-              <dt>What to change next time</dt>
-              <dd className="pre-wrap">{reflection.changeNextTime || 'Not noted'}</dd>
+              <dt>Change next time</dt>
+              <dd className="pre-wrap">{reflection.changeNextTime || 'None'}</dd>
             </div>
             <div>
-              <dt>Notes for a future visit</dt>
-              <dd className="pre-wrap">{reflection.notesForNextVisit || 'Not noted'}</dd>
+              <dt>Notes for next time</dt>
+              <dd className="pre-wrap">{reflection.notesForNextVisit || 'None'}</dd>
             </div>
           </dl>
           <p className="field-help">Saved {formatDate(reflection.updatedAt)}</p>
@@ -158,8 +157,8 @@ function ReflectionSection({ story, onSaved, startOpen = false }) {
         </>
       ) : (
         <>
-          <p>When you are ready, you can note what helped and what you would change.</p>
-          <button className="button-link-secondary" type="button" onClick={startEditing}>Add notes about the visit</button>
+          <p>How did it go? Write down what helped and what you’d change.</p>
+          <button className="button-link-secondary" type="button" onClick={startEditing}>Add notes</button>
         </>
       )}
     </section>

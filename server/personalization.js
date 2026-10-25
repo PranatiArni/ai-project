@@ -111,7 +111,7 @@ function sensorySection(area, context) {
     ],
     [],
     context.limit,
-    `You marked ${details.label.toLowerCase()} as ${level === 'often' ? 'often' : 'sometimes'} hard`,
+    details.because,
   )
 }
 
@@ -143,7 +143,7 @@ function buildSections(context) {
         [`I can bring ${joinList(packList)}.`, 'I can choose to use them, or not.'],
         [],
         limit,
-        'Based on the supports you chose',
+        'Because you picked these',
       ),
       // Lets the story show a picture for each support. Family-added supports
       // have no picture of their own, so their supportId is null.
@@ -310,6 +310,6 @@ export function buildPlan({ destination, visitType, profile } = {}) {
     checklist: buildChecklist(context),
     suggestions: buildSuggestions(context),
     questionsForVenue: context.questions,
-    generalInfoNotice: `This plan uses general information about ${type.place ? `visiting ${type.place}` : 'new places'}. It does not include verified details about ${place}.`,
+    generalInfoNotice: `This is based on what ${type.place ? `visiting ${type.place} is` : 'new places are'} usually like. It doesn’t know anything specific about ${place}, so call ahead about anything important.`,
   }
 }

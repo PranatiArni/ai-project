@@ -12,9 +12,9 @@ export const CONCERN_LEVEL_LABELS = {
   often: 'Often hard',
 }
 export const DETAIL_LEVEL_LABELS = {
-  brief: 'Brief — two short sentences per part',
-  standard: 'Standard',
-  detailed: 'Detailed — more explanation',
+  brief: 'Short',
+  standard: 'Medium',
+  detailed: 'Long',
 }
 
 // Maximum story sentences per section for each detail level.
@@ -26,7 +26,8 @@ export const MAX_CUSTOM_SUPPORT_LENGTH = 60
 
 export const SENSORY_AREAS = {
   sound: {
-    label: 'Sound and unexpected noise',
+    label: 'Loud or sudden sounds',
+    because: 'Because sounds can be hard',
     title: 'Sounds I might hear',
     trigger: 'sounds feel too loud',
     generic: 'Some places can have loud or sudden sounds.',
@@ -39,7 +40,8 @@ export const SENSORY_AREAS = {
     },
   },
   lighting: {
-    label: 'Lighting and visual stimulation',
+    label: 'Bright lights',
+    because: 'Because bright lights can be hard',
     title: 'Lights and things to see',
     trigger: 'lights feel too bright',
     generic: 'Some places have bright lights or a lot to look at.',
@@ -52,7 +54,8 @@ export const SENSORY_AREAS = {
     },
   },
   crowds: {
-    label: 'Crowds and unfamiliar spaces',
+    label: 'Crowds and new places',
+    because: 'Because crowds can be hard',
     title: 'People and new spaces',
     trigger: 'there are lots of people',
     generic: 'Some places can be busy, with many people moving around.',
@@ -65,7 +68,8 @@ export const SENSORY_AREAS = {
     },
   },
   waiting: {
-    label: 'Waiting and transitions',
+    label: 'Waiting',
+    because: 'Because waiting can be hard',
     title: 'Waiting and what comes next',
     trigger: 'I have to wait',
     generic: 'Sometimes there is waiting before it is my turn.',
@@ -270,7 +274,7 @@ export const CHECKLIST_RULES = [
     phase: 'before',
     priority: 0,
     when: () => true,
-    label: () => 'Read the preparation story together before the visit',
+    label: () => 'Read the story together before the visit',
     reason: () => 'Included in every plan',
   },
   {
@@ -278,7 +282,7 @@ export const CHECKLIST_RULES = [
     phase: 'before',
     priority: 1,
     when: (context) => context.questions.length > 0,
-    label: (context) => `Contact ${context.destination} with the questions listed in your plan`,
+    label: (context) => `Call ${context.destination} with your questions`,
     reason: () => 'Based on the areas you marked',
   },
   {
@@ -318,7 +322,7 @@ export const CHECKLIST_RULES = [
     phase: 'before',
     priority: 3,
     when: (context) => context.profile.sound === 'often',
-    label: () => 'If your child finds it helpful, listen to recordings of sounds you might hear',
+    label: () => 'Listen to recordings of sounds you might hear, if that helps',
     reason: () => 'You said sound is often hard',
   },
   {
@@ -342,7 +346,7 @@ export const CHECKLIST_RULES = [
     phase: 'during',
     priority: 4,
     when: (context) => context.profile.lighting === 'often',
-    label: () => 'Choose a seat or spot away from bright or flashing lights when possible',
+    label: () => 'Pick a spot away from bright or flashing lights',
     reason: () => 'You said lighting is often hard',
   },
   {
@@ -350,7 +354,7 @@ export const CHECKLIST_RULES = [
     phase: 'after',
     priority: 0,
     when: () => true,
-    label: () => 'Afterward, note what helped and what to change next time',
+    label: () => 'Afterward, write down what helped',
     reason: () => 'Included in every plan',
   },
 ]
@@ -364,14 +368,14 @@ export const JOURNEY_STEPS = [
     title: 'Get ready to go',
     section: 'getting-ready',
     checklist: ['read-story', 'pack-supports'],
-    alternative: 'If getting ready feels rushed, it is okay to skip a step or leave a little later.',
+    alternative: 'If you’re rushed, it’s okay to skip something or leave a bit later.',
   },
   {
     id: 'arrive',
     title: 'Arrive',
     section: 'arriving',
     checklist: ['find-quiet-spot', 'avoid-bright-spot'],
-    alternative: 'If going in feels like too much, it is okay to wait outside or in the car for a few minutes first.',
+    alternative: 'If going in is too much, wait outside or in the car for a few minutes first.',
   },
   {
     id: 'during',
@@ -379,13 +383,13 @@ export const JOURNEY_STEPS = [
     section: 'what-might-happen',
     checklist: [],
     showCopingIdeas: true,
-    alternative: 'You can pause, take a break, or decide together to stop for today.',
+    alternative: 'Take a break, or stop for today. That’s okay too.',
   },
   {
     id: 'leave',
     title: 'Leave and head home',
     section: 'leaving',
     checklist: ['reflect'],
-    alternative: 'If leaving is hard, some families count down together or say a familiar goodbye.',
+    alternative: 'If leaving is hard, try counting down together or saying the same goodbye each time.',
   },
 ]

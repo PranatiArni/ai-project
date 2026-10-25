@@ -148,26 +148,26 @@ try {
     await fill('select[name=visitType]', visitType)
     for (const [legend, option] of areas) await choose(legend, option)
     for (const support of supports) await click(support)
-    await click('Create and save plan')
+    await click('Make my plan')
     await waitFor(`/^\\/stories\\/[^/]+$/.test(location.pathname) && document.querySelector('.plan-header')`)
     return storyIdFromUrl()
   }
 
   console.log('— Creating a plan with the form')
   await open('/create-story', `document.querySelector('form')`)
-  await click('Create and save plan')
+  await click('Make my plan')
   check('the form will not submit without a destination',
     await run(`location.pathname === '/create-story' && !document.querySelector('input[name=destination]').validity.valid`))
 
   const storyId = await createPlan({
     destination: 'the dentist',
     visitType: 'dentist',
-    areas: [['Sound and unexpected noise', 'Often hard']],
+    areas: [['Loud or sudden sounds', 'Often hard']],
     supports: ['Noise-reducing headphones'],
   })
   check('submitting the form opens the saved plan', Boolean(storyId))
   check('the plan shows what it was made for',
-    await run(`document.querySelector('.choices-summary').textContent.includes('Sound and unexpected noise (often hard)')`))
+    await run(`document.querySelector('.choices-summary').textContent.includes('Loud or sudden sounds (often hard)')`))
   const story = await api(`/api/stories/${storyId}`)
   check('the saved plan has a sound section and the headphones', story.sections.some((s) => s.id === 'sound')
     && story.profile.supports.includes('headphones'))
@@ -196,8 +196,8 @@ try {
     window.speechSynthesis.resume = () => {}
   })()`)
   check('the read-aloud button is offered', await run(`Boolean([...document.querySelectorAll('button')]
-    .find((button) => button.textContent.includes('Read this part aloud')))`))
-  await click('Read this part aloud')
+    .find((button) => button.textContent.includes('Read aloud')))`))
+  await click('Read aloud')
   check('it reads the current part’s title and words',
     await waitFor(`window.spoken[0]?.startsWith('Arriving') && window.spoken[0].includes('front desk')`),
     await run('window.spoken[0]'))
@@ -207,13 +207,13 @@ try {
   check('Pause changes to Resume', await waitFor(`document.querySelector('.speech-controls').textContent.includes('Resume')`))
   await click('Stop')
   check('Stop returns to the read-aloud button',
-    await waitFor(`document.querySelector('.speech-controls').textContent.includes('Read this part aloud')`))
-  await click('Read this part aloud')
+    await waitFor(`document.querySelector('.speech-controls').textContent.includes('Read aloud')`))
+  await click('Read aloud')
   const cancelsBefore = await run('window.speechCancels')
   await click('Next')
   await waitFor(`${heading} === 'What might happen next'`)
   check('moving to another part stops the reading', await run(`window.speechCancels > ${cancelsBefore}
-    && document.querySelector('.speech-controls').textContent.includes('Read this part aloud')`))
+    && document.querySelector('.speech-controls').textContent.includes('Read aloud')`))
 
   console.log('— Visit journey')
   check('the journey opens on the requested step', await open(`/trip/${storyId}?step=arrive`, `${heading} === 'Arrive'`))
@@ -221,9 +221,9 @@ try {
   await waitFor(`document.querySelector('.journey-box input')?.checked && !document.querySelector('.saving-note')`)
   check('ticking a checkbox on a step saves it',
     (await api(`/api/stories/${storyId}`)).checklist.find((item) => item.id === 'find-quiet-spot').completed)
-  await click('Mark this step done')
+  await click('Mark as done')
   check('marking a step done shows confirmation',
-    await waitFor(`document.querySelector('.done-note')?.textContent.includes('This step is done')`))
+    await waitFor(`document.querySelector('.done-note')?.textContent.includes('✓ Done')`))
   check('step completion is saved',
     (await api(`/api/stories/${storyId}`)).journey.find((step) => step.id === 'arrive').completed)
   await click('Take a break')
@@ -246,14 +246,14 @@ try {
       ? Promise.reject(new TypeError('Failed to fetch'))
       : realFetch(url, options)
   })()`)
-  await click('Mark this step done')
+  await click('Mark as done')
   check('a failed save shows an error', await waitFor(`document.querySelector('[role=alert]')?.textContent.includes('not saved')`))
   check('a failed save undoes the change on screen',
-    await run(`document.querySelector('.journey-actions button').textContent.includes('Mark this step done')`))
+    await run(`document.querySelector('.journey-actions button').textContent.includes('Mark as done')`))
 
   console.log('— Plan page checklist')
   await open(`/stories/${storyId}`, `document.querySelectorAll('.plan-aside input[type=checkbox]').length > 0`)
-  await click('Read the preparation story')
+  await click('Read the story together')
   await waitFor(`!document.querySelector('.saving-note')`)
   check('ticking on the plan page saves',
     (await api(`/api/stories/${storyId}`)).checklist.find((item) => item.id === 'read-story').completed)
@@ -264,8 +264,8 @@ try {
   await click('Edit wording')
   await waitFor(`document.querySelector('.story-editor textarea')`)
   await fill('.story-editor textarea', 'We are going to see Dr. Lee today\nIs it a short drive?')
-  await click('Save wording')
-  check('saving shows a confirmation', await waitFor(`document.querySelector('.done-note')?.textContent.includes('wording is saved')`))
+  await click('Save', `document.querySelector('.story-editor')`)
+  check('saving shows a confirmation', await waitFor(`document.querySelector('.done-note')?.textContent.includes('✓ Saved.')`))
   check('the reader shows the new wording and marks the part as edited', await waitFor(
     `document.querySelector('.reader-part').textContent.includes('We are going to see Dr. Lee today.')
       && document.querySelector('.step-reason.edited')`))
@@ -279,9 +279,9 @@ try {
     `document.querySelector('input[name=destination]')?.value === 'the dentist'
       && document.querySelector('input[name=area-sound][value=often]')?.checked`))
   check('it warns that wording edits will be replaced',
-    await run(`document.body.textContent.includes('Your wording edits will be replaced')`))
-  await choose('Waiting and transitions', 'Often hard')
-  await click('Save and rebuild plan')
+    await run(`document.body.textContent.includes('Heads up')`))
+  await choose('Waiting', 'Often hard')
+  await click('Update plan')
   await waitFor(`location.pathname === '/stories/${storyId}' && document.querySelector('.plan-header')`)
   edited = await api(`/api/stories/${storyId}`)
   check('the rebuilt plan follows the new choices', edited.sections.some((s) => s.id === 'waiting')
@@ -304,13 +304,13 @@ try {
   const reflectionForm = `document.querySelector('.reflection-form')`
   check('the form offers only this plan’s own supports', await run(`${reflectionForm}.textContent.includes('Noise-reducing headphones')
     && !${reflectionForm}.textContent.includes('A visual timer')`))
-  await click('The visit journey', reflectionForm)
+  await click('The steps for the day', reflectionForm)
   await click('Noise-reducing headphones', reflectionForm)
   await fill('.reflection-form textarea[name=changeNextTime]', 'Book the first appointment of the day')
   await fill('.reflection-form textarea[name=notesForNextVisit]', 'Ask for the quiet room')
   await click('Save notes', reflectionForm)
   check('saved notes are shown back', await waitFor(`document.querySelector('.reflection-summary')?.textContent.includes('Ask for the quiet room')
-    && document.querySelector('#reflection').textContent.includes('Your notes are saved')`))
+    && document.querySelector('#reflection').textContent.includes('✓ Saved.')`))
   const reflected = await api(`/api/stories/${storyId}`)
   check('the reflection is saved and ticks "note what helped"', reflected.reflection?.supportsUsed.includes('Noise-reducing headphones')
     && reflected.checklist.find((item) => item.id === 'reflect').completed)
@@ -322,13 +322,13 @@ try {
     await waitFor(`document.querySelector('.past-visit-card')?.textContent.includes('Book the first appointment')`))
   check('the new form still starts with no preferences chosen',
     await run(`document.querySelector('input[name=area-sound][value=not-a-concern]').checked`))
-  await click('Copy that plan’s preferences')
+  await click('Use the same answers')
   check('copying fills in that plan’s preferences', await waitFor(`document.querySelector('input[name=area-sound][value=often]').checked
     && document.querySelector('input[name=area-waiting][value=often]').checked`))
-  await click('Show my notes from that visit')
+  await click('Show these notes')
   await fill('input[name=destination]', 'the dentist')
   await fill('select[name=visitType]', 'dentist')
-  await click('Create and save plan')
+  await click('Make my plan')
   check('the new plan shows the notes the caregiver chose to bring', await waitFor(
     `document.querySelector('.previous-visit')?.textContent.includes('Ask for the quiet room')`))
   const withNotesId = await storyIdFromUrl()
@@ -338,9 +338,9 @@ try {
   console.log('— Places and family reports')
   await open('/places', `document.querySelectorAll('.place-card').length === 3`)
   check('example places are labeled and have no invented scores', await run(`[...document.querySelectorAll('.place-card')]
-    .every((card) => card.textContent.includes('Example place') && card.textContent.includes('No family reports yet'))`))
+    .every((card) => card.textContent.includes('Example place') && card.textContent.includes('No reports yet'))`))
   const firstCard = `document.querySelector('.place-card')`
-  await click('Share your family’s experience', firstCard)
+  await click('Add a report', firstCard)
   await waitFor(`${firstCard}.querySelector('.report-form')`)
   await click('Save report', firstCard)
   check('an untouched report form records nothing and explains why',
@@ -372,7 +372,7 @@ try {
   const secondId = await createPlan({
     destination: 'the dentist',
     visitType: 'dentist',
-    areas: [['Crowds and unfamiliar spaces', 'Often hard'], ['Waiting and transitions', 'Often hard']],
+    areas: [['Crowds and new places', 'Often hard'], ['Waiting', 'Often hard']],
     supports: ['A visual timer'],
   })
   const second = await api(`/api/stories/${secondId}`)

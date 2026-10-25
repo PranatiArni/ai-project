@@ -93,7 +93,7 @@ the plan page shows.
   store.
 - `useChecklist()` (`client/src/useChecklist.js:7`) shows a tick immediately,
   saves it, and **puts it back if the save fails** (an "optimistic update").
-  The journey page does the same for "Mark this step done".
+  The journey page does the same for "Mark as done".
 - The position in the story or journey lives in the URL (`?part=3`,
   `?step=arrive`), so a refresh keeps your place and the calm break can link
   back to the same step.
@@ -194,24 +194,24 @@ Run `npm test` (server) and `npm run test:browser` (real browser).
 Start with `npm run dev` and open http://localhost:5173.
 
 1. On the home page, choose **Plan a visit**.
-2. Enter "the dentist", choose **Dentist**, and mark **Sound: Often hard**.
+2. Enter "the dentist", choose **Dentist**, and mark **Loud or sudden sounds: Often hard**.
    Tick **Noise-reducing headphones**, then create the plan.
-3. On the plan, point out **Made for your choices** and the green "You marked…"
+3. On the plan, point out **Your answers** and the green "Because sounds can be hard"
    tag on the sounds part. Click **Next** through a few parts.
-4. Open **Read together in a quiet view**. Try **Read this part aloud**, then
+4. Click **Open reading view**. Try **Read aloud**, then
    **Stop**.
 5. Back on the plan, tick a checklist item. Refresh the page and show that it
    stayed ticked.
 6. Click **Edit wording**, change a sentence, and save it. Show the "You
    edited this part" tag.
-7. Click **Start the visit journey**. Go to **During the visit** and show the
+7. Click **Open the steps for the day**. Go to **During the visit** and show the
    family's coping line. Click **Take a break**, then **Go back to the same
    step**.
 8. On **Leave and head home**, mark it done and choose **Note what helped**.
    Save a short note.
 9. Plan a second visit to the same dentist with **Crowds** and **Waiting**
-   marked instead. Under **Start from a past visit**, choose the first plan and
+   marked instead. Under **Use notes from a past visit**, choose the first plan and
    show its notes. Compare the two plans: different story parts and different
    checklist items.
 10. Open **Places**. Show the source labels and that example places have no
-    scores. Share a report and show how it appears.
+    scores. Click **Add a report** and show how it appears.

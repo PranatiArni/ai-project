@@ -109,8 +109,8 @@ function roundOne(value) {
 
 function summarize(average) {
   if (average <= 2) return 'Mostly calm'
-  if (average <= 3.5) return 'Mixed reports'
-  return 'Often challenging'
+  if (average <= 3.5) return 'Mixed'
+  return 'Often hard'
 }
 
 // `now` is a parameter so tests can check the out-of-date warning.

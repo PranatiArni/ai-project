@@ -70,33 +70,29 @@ function PlacesPage() {
   return (
     <section className="page-section places-page">
       <p className="eyebrow">Places</p>
-      <h1>Places and family reports</h1>
+      <h1>Places</h1>
       <p>
-        Families share what a place was like for them: noise, lighting, crowds,
-        waiting, and whether there was somewhere quiet to take a break.
+        See what other families noticed at a place, and share what you noticed.
       </p>
 
       <section className="trust-panel" aria-labelledby="trust-heading">
-        <h2 id="trust-heading">How to read these reports</h2>
+        <h2 id="trust-heading">About these reports</h2>
         <dl>
           <div>
             <dt><span className="source-badge family">Reported by families</span></dt>
-            <dd>Shared by families using Ready Together. Reports are not checked or verified.</dd>
+            <dd>Shared by other families. Nobody checks them.</dd>
           </div>
           <div>
             <dt><span className="source-badge unknown">Unknown</span></dt>
-            <dd>No reports yet. This does not mean a place is calm or difficult.</dd>
+            <dd>Nobody has reported on it yet.</dd>
           </div>
           <div>
             <dt><span className="source-badge example">Example place</span></dt>
-            <dd>Made-up places for trying the app. They are not real venues.</dd>
+            <dd>Made-up places so you can try it out.</dd>
           </div>
         </dl>
         <p className="field-help">
-          Ready Together does not have verified or venue-provided information.
-          Check important details, such as accommodations or opening hours, with
-          the place directly. Categories run from 1 (calm) to 5 (very
-          challenging); the calm score runs the other way, so higher is calmer.
+          Check anything important, like hours or accommodations, with the place itself. Ratings go from 1 (calm) to 5 (very hard). For the calm score, higher is calmer.
         </p>
       </section>
 
@@ -128,13 +124,13 @@ function PlacesPage() {
                 onAdded={(result) => {
                   setPlaces(result.places)
                   setAdding(false)
-                  setMessage(`✓ ${result.place.name} was added. You can share a report for it below.`)
+                  setMessage(`✓ ${result.place.name} was added.`)
                 }}
               />
             )}
             {familyPlaces.length === 0 ? (
               <div className="empty-state">
-                <p>No places added yet. Add a place your family has visited to start sharing reports.</p>
+                <p>No places yet. Add one your family has been to.</p>
               </div>
             ) : (
               <div className="card-list">
@@ -148,7 +144,7 @@ function PlacesPage() {
           <section aria-labelledby="example-places-heading">
             <h2 id="example-places-heading">Example places</h2>
             <p className="field-help">
-              These are not real places. Try sharing a report to see how reports appear.
+              Not real places. Add a report to see how it works.
             </p>
             <div className="card-list">
               {examplePlaces.map((place) => (

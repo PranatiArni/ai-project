@@ -37,8 +37,7 @@ function StoryEditor({ story, onSaved, onCancel }) {
   return (
     <form className="story-editor" onSubmit={save}>
       <p className="field-help">
-        Write one sentence on each line, up to {MAX_SENTENCES} per part. Short,
-        calm sentences are usually easiest to follow.
+        One sentence per line, up to {MAX_SENTENCES} per part.
       </p>
       {story.sections.map((section, index) => (
         <label key={section.id}>
@@ -52,7 +51,7 @@ function StoryEditor({ story, onSaved, onCancel }) {
       ))}
       {error && <p className="error-message" role="alert">{error}</p>}
       <div className="button-row">
-        <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save wording'}</button>
+        <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
         <button className="button-link-secondary" type="button" onClick={onCancel} disabled={saving}>
           Cancel
         </button>

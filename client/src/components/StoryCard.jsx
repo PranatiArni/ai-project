@@ -8,7 +8,7 @@ function StoryCard({ id, title, placeType, createdAt, checklistProgress, hasRefl
       <p className="field-help">
         Saved {new Date(createdAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
         {checklistProgress && ` · ${checklistProgress.completed} of ${checklistProgress.total} checklist steps done`}
-        {hasReflection && ' · After-visit notes saved'}
+        {hasReflection && ' · Has notes'}
       </p>
       <Link to={`/stories/${id}`}>Open plan</Link>
     </article>

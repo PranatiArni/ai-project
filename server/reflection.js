@@ -7,7 +7,7 @@ const MAX_TEXT_LENGTH = 500
 
 // Parts of the preparation a caregiver can say helped, besides story parts.
 const OTHER_HELPFUL_PARTS = [
-  { id: 'journey', title: 'The visit journey' },
+  { id: 'journey', title: 'The steps for the day' },
   { id: 'checklist', title: 'The checklist' },
   { id: 'calm-break', title: 'The calm break' },
 ]

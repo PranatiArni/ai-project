@@ -161,3 +161,11 @@ The finished app does not use AI. Plans come from fixed rules in
   values, and a straight versus curly apostrophe.
 - Claude once misreported a browser test count ("40 of 41") and corrected it
   to 39 of 40.
+
+### Wording update (October 25, 2026)
+
+I asked Claude to rewrite the text inside the app so it sounds plainer and
+more casual, with fewer long explanations. The meaning stayed the same: the
+app still says that place reports are not checked, that example places are
+not real, and that it is not medical advice. Tests and screenshots were
+updated to match.

@@ -103,10 +103,10 @@ function VisitJourneyPage() {
 
   return (
     <section className="page-section journey-page">
-      <p className="eyebrow">Visit journey</p>
+      <p className="eyebrow">On the day</p>
       <h1>{story.title}</h1>
       <p className="plan-meta">
-        {doneCount} of {steps.length} steps done. Go in any order. Skipping a step is okay.
+        {doneCount} of {steps.length} done. It’s fine to skip steps.
       </p>
 
       <nav aria-label="Visit steps">
@@ -144,7 +144,7 @@ function VisitJourneyPage() {
 
         {stepItems.length > 0 && (
           <section className="journey-box" aria-labelledby="step-todo-heading">
-            <h3 id="step-todo-heading">For this step</h3>
+            <h3 id="step-todo-heading">To do</h3>
             {checklist.error && <p className="error-message" role="alert">{checklist.error}</p>}
             <ul className="plan-checklist">
               {stepItems.map((item) => (
@@ -169,12 +169,12 @@ function VisitJourneyPage() {
         )}
 
         <p className="info-note">
-          <strong>If this step is not working: </strong>{step.alternative}
+          <strong>If this isn’t working: </strong>{step.alternative}
         </p>
 
         <div className="button-row journey-actions">
           <button type="button" onClick={toggleStepDone} disabled={savingStep}>
-            {savingStep ? 'Saving…' : step.completed ? 'Mark as not done' : 'Mark this step done'}
+            {savingStep ? 'Saving…' : step.completed ? 'Undo' : 'Mark as done'}
           </button>
           <Link
             className="button-link button-link-secondary"
@@ -190,7 +190,7 @@ function VisitJourneyPage() {
         </div>
         {stepError && <p className="error-message" role="alert">{stepError}</p>}
         <p className="done-note" role="status">
-          {step.completed ? '✓ This step is done.' : ''}
+          {step.completed ? '✓ Done' : ''}
         </p>
 
         <div className="reader-nav">
@@ -214,7 +214,7 @@ function VisitJourneyPage() {
 
       {doneCount === steps.length && (
         <p className="success-note">
-          All four steps are marked done. You can look back at the plan any time.
+          All four steps are done. Nice work.
         </p>
       )}
       <p className="plan-footer-link"><Link to={`/stories/${story.id}`}>Back to the plan</Link></p>

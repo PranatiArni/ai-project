@@ -400,7 +400,7 @@ function createApp(database = createDatabase(databasePath)) {
     addReport(database, place.id, report)
     return response.status(201).json({
       places: listPlaces(database),
-      message: 'Thank you. Your report was saved.',
+      message: 'Thanks! Your report was saved.',
     })
   })
 

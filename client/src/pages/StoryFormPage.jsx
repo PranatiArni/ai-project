@@ -185,35 +185,29 @@ function StoryFormPage() {
       <h1>{existing ? 'Change preferences' : 'Tell us about the visit'}</h1>
       {existing ? (
         <p>
-          Saving rebuilds the story, journey, and checklist from these choices.
-          Checklist ticks are kept for items that stay in the plan, and your
-          photos are kept.
+          Saving updates the story, checklist, and steps for the day. Your checked items and photos stay.
         </p>
       ) : (
         <p>
-          Only the destination and kind of place are needed. Everything else is
-          optional and can make the plan fit your family better.
+          Only the first two questions are required.
         </p>
       )}
       {hasEdits && (
         <p className="info-note">
-          <strong>Your wording edits will be replaced. </strong>
-          You changed some of the story&apos;s wording. Rebuilding writes the story
-          again from these choices, so those changes will not be kept.
+          <strong>Heads up: </strong>you changed some of the story’s words. Saving will replace them.
         </p>
       )}
       <form className="form-panel" onSubmit={submitPlan}>
         {!existing && pastVisits.length > 0 && (
           <fieldset>
-            <legend>Start from a past visit (optional)</legend>
+            <legend>Use notes from a past visit (optional)</legend>
             <p className="field-help">
-              Look back at what you noted after an earlier visit. Nothing from it
-              is used unless you choose it below.
+              See what you wrote after an earlier visit.
             </p>
             <label>
               Past visit
               <select name="pastVisit" value={pastVisit?.id ?? ''} onChange={(event) => choosePastVisit(event.target.value)}>
-                <option value="">Do not use a past visit</option>
+                <option value="">Don’t use one</option>
                 {pastVisits.map((visit) => (
                   <option key={visit.id} value={visit.id}>
                     {visit.title} ({new Date(visit.createdAt).toLocaleDateString()})
@@ -230,27 +224,27 @@ function StoryFormPage() {
                     <dd>{helpedTitles(pastVisit).join(', ') || 'Not noted'}</dd>
                   </div>
                   <div>
-                    <dt>Supports used</dt>
+                    <dt>Things used</dt>
                     <dd>{pastVisit.reflection.supportsUsed.join(', ') || 'Not noted'}</dd>
                   </div>
                   <div>
-                    <dt>What to change next time</dt>
+                    <dt>Change next time</dt>
                     <dd className="pre-wrap">{pastVisit.reflection.changeNextTime || 'Not noted'}</dd>
                   </div>
                   <div>
-                    <dt>Notes for a future visit</dt>
+                    <dt>Notes for next time</dt>
                     <dd className="pre-wrap">{pastVisit.reflection.notesForNextVisit || 'Not noted'}</dd>
                   </div>
                 </dl>
                 {pastVisit.profile && (
                   <div className="button-row">
                     <button className="button-link-secondary" type="button" onClick={copyPastPreferences}>
-                      Copy that plan’s preferences
+                      Use the same answers
                     </button>
                   </div>
                 )}
                 <p className="done-note" role="status">
-                  {copied ? '✓ Preferences copied. You can still change any of them below.' : ''}
+                  {copied ? '✓ Copied. You can still change anything below.' : ''}
                 </p>
                 <label className="choice">
                   <input
@@ -258,7 +252,7 @@ function StoryFormPage() {
                     checked={carryNotes}
                     onChange={(event) => setCarryNotes(event.target.checked)}
                   />
-                  Show my notes from that visit in the new plan
+                  Show these notes in the new plan
                 </label>
               </div>
             )}
@@ -278,8 +272,7 @@ function StoryFormPage() {
               required
             />
             <span className="field-help" id="destination-help">
-              Write it the way you would say it out loud, such as “the dentist”
-              or “Dr. Lee&apos;s office.” The story uses these exact words.
+              Write it how you’d say it, like “the dentist” or “Dr. Lee’s office.”
             </span>
           </label>
           <label>
@@ -291,12 +284,11 @@ function StoryFormPage() {
               ))}
             </select>
             <span className="field-help">
-              The plan uses general information about this kind of place, not
-              verified details about your destination.
+              We use this for general info about places like it.
             </span>
           </label>
           <label>
-            A name your child likes (optional)
+            Your child’s name or nickname (optional)
             <input
               name="nickname"
               value={form.nickname}
@@ -308,10 +300,9 @@ function StoryFormPage() {
         </fieldset>
 
         <fieldset>
-          <legend>Sensory preferences (optional)</legend>
+          <legend>What’s hard for your child? (optional)</legend>
           <p className="field-help">
-            Mark anything that can feel hard. Each choice adds matching story
-            sections and checklist items. Leave the rest as “Not a concern.”
+            Mark anything that’s hard. Skip anything that isn’t.
           </p>
           {options.sensoryAreas.map((area) => (
             <fieldset className="choice-group" key={area.id}>
@@ -333,7 +324,7 @@ function StoryFormPage() {
             </fieldset>
           ))}
           <fieldset className="choice-group">
-            <legend>How much detail should the story include?</legend>
+            <legend>How long should the story be?</legend>
             <div className="choice-row">
               {options.detailLevels.map((level) => (
                 <label className="choice" key={level.id}>
@@ -352,10 +343,9 @@ function StoryFormPage() {
         </fieldset>
 
         <fieldset>
-          <legend>Helpful supports (optional)</legend>
+          <legend>Things that help (optional)</legend>
           <p className="field-help">
-            Choose anything your family already uses. The story mentions them
-            as options, and the checklist reminds you to pack them.
+            Pick anything your family already uses.
           </p>
           <div className="support-grid">
             {options.supports.map((support) => (
@@ -370,7 +360,7 @@ function StoryFormPage() {
             ))}
           </div>
           <label>
-            Other supports
+            Anything else?
             <input
               value={otherSupports}
               onChange={(event) => setOtherSupports(event.target.value)}
@@ -402,14 +392,13 @@ function StoryFormPage() {
         <div className="button-row">
           <button className="primary-button" type="submit" disabled={generating}>
             {generating
-              ? 'Saving your plan…'
-              : existing ? 'Save and rebuild plan' : 'Create and save plan'}
+              ? 'Saving…'
+              : existing ? 'Update plan' : 'Make my plan'}
           </button>
           {existing && <Link to={`/stories/${existing.id}`}>Cancel</Link>}
         </div>
         <p className="note">
-          Plans are saved in this app&apos;s own database. No outside services
-          receive your answers.
+          Your plan is only saved in this app.
         </p>
       </form>
     </section>

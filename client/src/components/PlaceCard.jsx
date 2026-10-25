@@ -3,10 +3,10 @@ import { requestJson } from '../api.js'
 
 const SCORE_OPTIONS = [
   { value: '1', label: '1 — calm' },
-  { value: '2', label: '2 — a little challenging' },
+  { value: '2', label: '2 — a little hard' },
   { value: '3', label: '3 — mixed' },
-  { value: '4', label: '4 — challenging' },
-  { value: '5', label: '5 — very challenging' },
+  { value: '4', label: '4 — hard' },
+  { value: '5', label: '5 — very hard' },
 ]
 
 const formatDate = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
@@ -47,7 +47,7 @@ function ReportForm({ place, categories, onSaved, onCancel }) {
 
   return (
     <form className="report-form" onSubmit={submit}>
-      <p className="field-help">Answer only what you noticed. Anything left as “Not sure” is not counted.</p>
+      <p className="field-help">Skip anything you didn’t notice.</p>
       <div className="report-scores">
         {categories.map(({ id, label }) => (
           <label key={id}>
@@ -81,9 +81,9 @@ function ReportForm({ place, categories, onSaved, onCancel }) {
         </div>
       </fieldset>
       <label>
-        Anything other families might like to know? (optional)
+        Anything else? (optional)
         <textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={280} rows={3} />
-        <span className="field-help">Up to 280 characters. Please do not include names or other personal details.</span>
+        <span className="field-help">Please don’t include names.</span>
       </label>
       {error && <p className="error-message" role="alert">{error}</p>}
       <div className="button-row">
@@ -107,7 +107,7 @@ function PlaceCard({ place, options, onReported }) {
           <p className="place-type">{place.placeType}</p>
         </div>
         <span className={`source-badge ${place.origin}`}>
-          {place.origin === 'example' ? 'Example place — not real' : 'Added by a family'}
+          {place.origin === 'example' ? 'Example place (not real)' : 'Added by a family'}
         </span>
       </div>
 
@@ -119,14 +119,14 @@ function PlaceCard({ place, options, onReported }) {
         </p>
       ) : (
         <p className="place-summary">
-          <span className="source-badge unknown">Unknown</span> No family reports yet.
+          <span className="source-badge unknown">Unknown</span> No reports yet.
         </p>
       )}
       {place.reportCount > 0 && place.reportCount < options.fewReports && (
-        <p className="field-help">Based on only {reportWord(place.reportCount)}, so it may not reflect most visits.</p>
+        <p className="field-help">Only {reportWord(place.reportCount)} so far.</p>
       )}
       {place.outdated && (
-        <p className="info-note">The latest report is more than a year old and may be out of date.</p>
+        <p className="info-note">These reports are over a year old.</p>
       )}
 
       <dl className="place-categories">
@@ -152,7 +152,7 @@ function PlaceCard({ place, options, onReported }) {
 
       {place.notes.length > 0 && (
         <section className="place-notes" aria-label={`Family observations about ${place.name}`}>
-          <h4>Family observations</h4>
+          <h4>What families said</h4>
           <ul>
             {place.notes.map((note) => (
               <li key={`${note.reportedAt}-${note.text}`}>
@@ -184,7 +184,7 @@ function PlaceCard({ place, options, onReported }) {
             setReporting(true)
           }}
         >
-          Share your family’s experience
+          Add a report
         </button>
       )}
     </article>

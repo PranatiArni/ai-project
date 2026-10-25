@@ -24,7 +24,7 @@ function StoriesPage() {
       {!loading && !error && stories.length === 0 && (
         <div className="empty-state">
           <h2>No plans yet</h2>
-          <p>Plan an upcoming visit. It will be saved here so you can come back to it.</p>
+          <p>Plans you make will show up here.</p>
           <Link className="button-link" to="/create-story">Plan your first visit</Link>
         </div>
       )}
