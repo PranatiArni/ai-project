@@ -291,8 +291,8 @@ try {
 
   await click('Change preferences')
   await waitFor(`document.querySelector('input[name=destination]')?.value === 'the dentist'`)
-  await click('Create a story')
-  check('"Create a story" opens an empty form, not the plan being changed', await waitFor(
+  await click('Plan a visit')
+  check('"Plan a visit" opens an empty form, not the plan being changed', await waitFor(
     `location.pathname === '/create-story' && document.querySelector('h1')?.textContent === 'Tell us about the visit'
       && document.querySelector('input[name=destination]')?.value === ''`))
 

@@ -76,3 +76,88 @@ Repository: /workspaces/ai-project
 - Added API validation and server-side tests, responsive/calm styling, root development scripts, and local setup documentation.
 - Acceptance review: automated tests verify 5–10 story pages, at most three sentences per page, trigger-to-tool pairing, and generation under 30 seconds. API tests verify story/photo retrieval from SQLite, checklist progress across a later GET, and rating updates that change calm scores and ranking. The calm-break route carries the story and step back to the checklist. The seeded places are example data; real GPS-based discovery remains out of scope.
 - Validation: `npm test` passes all 7 tests; `npm run lint` and `npm run build` pass. Live checks returned JSON from `/api/health` and `/api/places`, and HTTP 200 for Vite and its deep-link routes. A browser was not available in this environment, so visual interaction and the browser console still need a manual check.
+
+---
+
+## Rebuilding the app with Claude Code (October 22–25, 2026)
+
+The entries above came from an earlier AI-assisted session in a GitHub
+Codespace (`/workspaces/ai-project`). They do not name the assistant used.
+This section covers a later session on my own computer.
+
+**Tool:** Claude Code, using the Claude Opus 5.5 model. It read the
+repository, ran commands, and wrote code, tests, and documentation. I
+reviewed each step before it was committed.
+
+The finished app does not use AI. Plans come from fixed rules in
+`server/planContent.js` and `server/personalization.js`.
+
+### What I did
+
+- Gave the product vision and requirements for the rebuild, and asked to work
+  through it one step at a time so I understood each change.
+- Reviewed each step, decided whether to continue, and approved every commit.
+- Tested the app myself by creating a dentist plan with photos, and gave
+  feedback on what I saw:
+  - The plan page "looks kinda ugly", which led to the plan page redesign.
+  - Showing the whole story at once could be overstimulating, so I asked for
+    the story to show one part at a time with a Next button. That became the
+    story reader and quiet view.
+  - I asked for visuals and not just words, which led to the picture for each
+    story part and support.
+- Asked for the end-to-end browser test to be kept in the project.
+
+### What Claude did
+
+- Audited the existing code and proposed the step-by-step plan.
+- Wrote the code, tests, and documentation for each step, in these commits:
+  - `db106a0`: personalization engine and its tests
+  - `45c80df`: saving plans, with database migrations
+  - `ce11014`: the visit setup form
+  - `172aa65`: plan page redesign, one-part-at-a-time reader, and pictures
+  - `2b00f38`: the visit journey
+  - `a704081`: the browser test
+  - `c2e72be`: editing, rebuilding, and read aloud
+  - `fc3f537`: trustworthy place information
+  - `ebf6e84`: post-visit reflection
+  - The final commit adds the README, this log, and the code guide.
+- Proposed these design choices, which I accepted:
+  - Rules instead of an AI model.
+  - Hedged wording about places.
+  - No invented place scores.
+  - Reflections that never change the rules automatically.
+  - Not using my test plan (which had a child's name and downloaded photos)
+    in the README screenshots.
+
+### How the work was checked
+
+- On October 25, 2026:
+  - `npm test`: 42 of 42 tests passed.
+  - `npm run test:browser`: 57 of 57 checks passed.
+  - `npm run lint`: no errors.
+  - `npm run build`: succeeded.
+- The browser test was checked by deliberately breaking a feature and
+  confirming that the test failed.
+- Layouts were checked with screenshots at desktop width and at a 390-pixel
+  phone width.
+- Not done:
+  - Testing with families.
+  - A formal accessibility audit or screen reader testing.
+  - Listening to read aloud. The test only confirms the right words are sent
+    to the browser's voice.
+
+### Problems found and fixed along the way
+
+- At first the tests failed only because packages were not installed on this
+  computer.
+- A first version of story editing would have removed question marks. It was
+  caught before testing.
+- Going from "Change preferences" to "Plan a visit" could have kept the old
+  plan in the form. Each form route now has its own React key.
+- Typed text was bold, and link buttons were taller than other buttons. Both
+  were CSS fixes.
+- Several failures were in the browser test script itself, not the app: an
+  incomplete Enter key press, page elements that could not be returned as
+  values, and a straight versus curly apostrophe.
+- Claude once misreported a browser test count ("40 of 41") and corrected it
+  to 39 of 40.

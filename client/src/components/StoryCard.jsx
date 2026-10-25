@@ -1,12 +1,16 @@
 import { Link } from 'react-router-dom'
 
-function StoryCard({ id, title, destination, createdAt }) {
+function StoryCard({ id, title, placeType, createdAt, checklistProgress, hasReflection }) {
   return (
     <article className="content-card">
       <h2>{title}</h2>
-      <p>Destination: {destination}</p>
-      {createdAt && <p className="field-help">Saved {new Date(createdAt).toLocaleString()}</p>}
-      <Link to={`/stories/${id}`}>Read story</Link>
+      <p className="place-type">{placeType}</p>
+      <p className="field-help">
+        Saved {new Date(createdAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+        {checklistProgress && ` · ${checklistProgress.completed} of ${checklistProgress.total} checklist steps done`}
+        {hasReflection && ' · After-visit notes saved'}
+      </p>
+      <Link to={`/stories/${id}`}>Open plan</Link>
     </article>
   )
 }

@@ -17,15 +17,15 @@ function StoriesPage() {
 
   return (
     <section className="page-section">
-      <p className="eyebrow">Your library</p>
-      <h1>Saved stories</h1>
-      {loading && <p>Loading your saved stories…</p>}
+      <p className="eyebrow">Your plans</p>
+      <h1>Saved plans</h1>
+      {loading && <p>Loading your saved plans…</p>}
       {error && <p className="error-message" role="alert">{error}</p>}
       {!loading && !error && stories.length === 0 && (
         <div className="empty-state">
-          <h2>No stories yet</h2>
-          <p>Create a story for an upcoming trip. It will be saved here.</p>
-          <Link className="button-link" to="/create-story">Create your first story</Link>
+          <h2>No plans yet</h2>
+          <p>Plan an upcoming visit. It will be saved here so you can come back to it.</p>
+          <Link className="button-link" to="/create-story">Plan your first visit</Link>
         </div>
       )}
       {stories.length > 0 && (
@@ -35,8 +35,10 @@ function StoriesPage() {
               key={story.id}
               id={story.id}
               title={story.title}
-              destination={story.destination}
+              placeType={story.placeType}
               createdAt={story.createdAt}
+              checklistProgress={story.checklistProgress}
+              hasReflection={story.hasReflection}
             />
           ))}
         </div>

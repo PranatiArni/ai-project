@@ -26,8 +26,8 @@ function App() {
         <Link className="brand" to="/">Ready Together</Link>
         <nav aria-label="Main navigation">
           <Link to="/">Home</Link>
-          <Link to="/stories">Stories</Link>
-          <Link to="/create-story">Create a story</Link>
+          <Link to="/stories">Saved plans</Link>
+          <Link to="/create-story">Plan a visit</Link>
           <Link to="/places">Places</Link>
         </nav>
       </header>
