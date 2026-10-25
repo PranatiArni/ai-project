@@ -1114,6 +1114,76 @@ progress {
   font-size: 0.85rem;
 }
 
+/* Post-visit reflection */
+.reflection-panel,
+.previous-visit {
+  margin-top: 1.5rem;
+  padding: 1.25rem clamp(1.25rem, 4vw, 2rem);
+  border: 1px solid #d8e5de;
+  border-radius: 20px;
+  background: #fff;
+  scroll-margin-top: 1rem;
+}
+
+.previous-visit {
+  margin: 0 0 1.5rem;
+  border-color: #cfe0d6;
+  background: #f4f9f6;
+}
+
+.reflection-panel h2,
+.previous-visit h2 {
+  margin-bottom: 0.35rem;
+  font-size: 1.2rem;
+}
+
+.reflection-panel .done-note {
+  min-height: 0;
+}
+
+.reflection-form {
+  margin-top: 0.75rem;
+}
+
+.reflection-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0.9rem 1.5rem;
+  margin: 0.75rem 0;
+}
+
+.reflection-summary dt {
+  margin-bottom: 0.2rem;
+  color: #587b70;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.reflection-summary dd {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.pre-wrap {
+  white-space: pre-wrap;
+}
+
+.past-visit-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid #d8e5de;
+  border-radius: 14px;
+  background: #f9fcfa;
+}
+
+.past-visit-card .button-row,
+.past-visit-card .done-note {
+  margin: 0;
+}
+
 /* Visit journey */
 .journey-page {
   max-width: 860px;

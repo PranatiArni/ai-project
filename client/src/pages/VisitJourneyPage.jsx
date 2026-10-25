@@ -182,6 +182,11 @@ function VisitJourneyPage() {
           >
             Take a break
           </Link>
+          {index === steps.length - 1 && (
+            <Link className="button-link button-link-secondary" to={`/stories/${story.id}?reflect=1`}>
+              Note what helped
+            </Link>
+          )}
         </div>
         {stepError && <p className="error-message" role="alert">{stepError}</p>}
         <p className="done-note" role="status">

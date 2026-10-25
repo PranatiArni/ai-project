@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { readFileAsDataUrl, requestJson, splitEntries } from '../api.js'
+import { helpedTitles } from '../reflection.js'
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024
 const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -27,6 +28,12 @@ function StoryFormPage() {
   const [photos, setPhotos] = useState([])
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
+  // Past visits with notes, offered only when creating a new plan.
+  const [pastVisits, setPastVisits] = useState([])
+  const [pastVisit, setPastVisit] = useState(null)
+  const [pastVisitError, setPastVisitError] = useState('')
+  const [carryNotes, setCarryNotes] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   // "Try again" adds one to this, which runs the loading effect again.
   const [loadAttempt, setLoadAttempt] = useState(0)
@@ -35,9 +42,12 @@ function StoryFormPage() {
     Promise.all([
       requestJson('/api/plan-options'),
       storyId ? requestJson(`/api/stories/${storyId}`) : null,
+      // The form still works if the list of past visits cannot be loaded.
+      storyId ? [] : requestJson('/api/stories').catch(() => []),
     ])
-      .then(([data, story]) => {
+      .then(([data, story, summaries]) => {
         setOptions(data)
+        setPastVisits(summaries.filter((summary) => summary.hasReflection))
         if (story) {
           setExisting(story)
           setForm({
@@ -54,6 +64,25 @@ function StoryFormPage() {
       })
       .catch((loadError) => setOptionsError(loadError.message))
   }, [storyId, loadAttempt])
+
+  async function choosePastVisit(id) {
+    setPastVisit(null)
+    setPastVisitError('')
+    setCarryNotes(false)
+    setCopied(false)
+    if (!id) return
+    try {
+      setPastVisit(await requestJson(`/api/stories/${id}`))
+    } catch (loadError) {
+      setPastVisitError(`That visit could not be loaded. ${loadError.message}`)
+    }
+  }
+
+  function copyPastPreferences() {
+    setProfile({ ...pastVisit.profile })
+    setOtherSupports(pastVisit.profile.customSupports.join(', '))
+    setCopied(true)
+  }
 
   function updateField(event) {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
@@ -111,7 +140,11 @@ function StoryFormPage() {
         : await requestJson('/api/stories', {
           method: 'POST',
           signal: AbortSignal.timeout(25_000),
-          body: JSON.stringify({ ...details, photos: await Promise.all(photos.map(readFileAsDataUrl)) }),
+          body: JSON.stringify({
+            ...details,
+            photos: await Promise.all(photos.map(readFileAsDataUrl)),
+            carryNotesFrom: carryNotes && pastVisit ? pastVisit.id : undefined,
+          }),
         })
       navigate(`/stories/${story.id}`)
     } catch (submitError) {
@@ -170,6 +203,67 @@ function StoryFormPage() {
         </p>
       )}
       <form className="form-panel" onSubmit={submitPlan}>
+        {!existing && pastVisits.length > 0 && (
+          <fieldset>
+            <legend>Start from a past visit (optional)</legend>
+            <p className="field-help">
+              Look back at what you noted after an earlier visit. Nothing from it
+              is used unless you choose it below.
+            </p>
+            <label>
+              Past visit
+              <select name="pastVisit" value={pastVisit?.id ?? ''} onChange={(event) => choosePastVisit(event.target.value)}>
+                <option value="">Do not use a past visit</option>
+                {pastVisits.map((visit) => (
+                  <option key={visit.id} value={visit.id}>
+                    {visit.title} ({new Date(visit.createdAt).toLocaleDateString()})
+                  </option>
+                ))}
+              </select>
+            </label>
+            {pastVisitError && <p className="error-message" role="alert">{pastVisitError}</p>}
+            {pastVisit && (
+              <div className="past-visit-card">
+                <dl className="reflection-summary">
+                  <div>
+                    <dt>What helped</dt>
+                    <dd>{helpedTitles(pastVisit).join(', ') || 'Not noted'}</dd>
+                  </div>
+                  <div>
+                    <dt>Supports used</dt>
+                    <dd>{pastVisit.reflection.supportsUsed.join(', ') || 'Not noted'}</dd>
+                  </div>
+                  <div>
+                    <dt>What to change next time</dt>
+                    <dd className="pre-wrap">{pastVisit.reflection.changeNextTime || 'Not noted'}</dd>
+                  </div>
+                  <div>
+                    <dt>Notes for a future visit</dt>
+                    <dd className="pre-wrap">{pastVisit.reflection.notesForNextVisit || 'Not noted'}</dd>
+                  </div>
+                </dl>
+                {pastVisit.profile && (
+                  <div className="button-row">
+                    <button className="button-link-secondary" type="button" onClick={copyPastPreferences}>
+                      Copy that plan’s preferences
+                    </button>
+                  </div>
+                )}
+                <p className="done-note" role="status">
+                  {copied ? '✓ Preferences copied. You can still change any of them below.' : ''}
+                </p>
+                <label className="choice">
+                  <input
+                    type="checkbox"
+                    checked={carryNotes}
+                    onChange={(event) => setCarryNotes(event.target.checked)}
+                  />
+                  Show my notes from that visit in the new plan
+                </label>
+              </div>
+            )}
+          </fieldset>
+        )}
         <fieldset>
           <legend>The visit</legend>
           <label>

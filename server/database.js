@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Database from 'better-sqlite3'
 import { buildJourney } from './personalization.js'
+import { reflectionChoices } from './reflection.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 
@@ -49,6 +50,10 @@ const MIGRATIONS = [
     DROP TABLE ratings;
     ALTER TABLE ratings_v3 RENAME TO ratings;
     CREATE INDEX ratings_by_place ON ratings(place_id, created_at);
+  `,
+  // 4: The caregiver's optional post-visit reflection for each plan.
+  `
+    ALTER TABLE stories ADD COLUMN reflection_json TEXT;
   `,
 ]
 
@@ -142,6 +147,7 @@ export function serializeStory(row) {
   const details = parseJson(row.plan_details_json, {})
   const sections = parseJson(row.sections_json, null)
   const checklist = JSON.parse(row.checklist_json)
+  const profile = parseJson(row.profile_json, null)
   return {
     id: row.id,
     title: row.title,
@@ -150,7 +156,7 @@ export function serializeStory(row) {
     visitType: row.visit_type ?? null,
     nickname: row.nickname || null,
     readingLevel: row.reading_level || null,
-    profile: parseJson(row.profile_json, null),
+    profile,
     triggers: JSON.parse(row.triggers_json),
     copingTools: JSON.parse(row.coping_tools_json),
     sections,
@@ -158,9 +164,12 @@ export function serializeStory(row) {
     photos: JSON.parse(row.photos_json),
     checklist,
     journey: buildJourney({ sections, checklist }, parseJson(row.journey_progress_json, {})),
+    reflection: parseJson(row.reflection_json, null),
+    reflectionChoices: reflectionChoices({ sections, profile }),
     suggestions: details.suggestions ?? [],
     questionsForVenue: details.questionsForVenue ?? [],
     generalInfoNotice: details.generalInfoNotice ?? null,
+    previousVisit: details.previousVisit ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
   }
@@ -170,7 +179,7 @@ export function serializeStory(row) {
 export function listStorySummaries(db) {
   return db.prepare(`
     SELECT id, title, destination, place_type, visit_type, checklist_json,
-      created_at, updated_at
+      reflection_json IS NOT NULL AS has_reflection, created_at, updated_at
     FROM stories ORDER BY created_at DESC
   `).all().map((row) => ({
     id: row.id,
@@ -179,6 +188,7 @@ export function listStorySummaries(db) {
     placeType: row.place_type,
     visitType: row.visit_type ?? null,
     checklistProgress: checklistProgress(JSON.parse(row.checklist_json)),
+    hasReflection: row.has_reflection === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
   }))

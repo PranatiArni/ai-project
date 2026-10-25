@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import ChecklistItem from '../components/ChecklistItem.jsx'
+import ReflectionSection from '../components/ReflectionSection.jsx'
 import StoryEditor from '../components/StoryEditor.jsx'
 import StoryPicture from '../components/StoryPicture.jsx'
 import StoryReader, { EVERY_PLAN_REASON } from '../components/StoryReader.jsx'
@@ -31,6 +32,7 @@ function describeProfile(profile, options) {
 
 function StoryPage() {
   const { storyId } = useParams()
+  const [searchParams] = useSearchParams()
   const [story, setStory] = useState(null)
   const [options, setOptions] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -96,6 +98,31 @@ function StoryPage() {
           <strong>About this plan: </strong>
           {story.generalInfoNotice} Check anything important with the place directly.
         </p>
+      )}
+
+      {story.previousVisit && (
+        <section className="previous-visit" aria-labelledby="previous-visit-heading">
+          <h2 id="previous-visit-heading">From your last visit</h2>
+          <p className="field-help">
+            You chose to bring these notes from{' '}
+            <Link to={`/stories/${story.previousVisit.fromStoryId}`}>{story.previousVisit.title}</Link>,
+            saved {new Date(story.previousVisit.reflectedAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}.
+          </p>
+          <dl className="reflection-summary">
+            {story.previousVisit.changeNextTime && (
+              <div>
+                <dt>What you wanted to change</dt>
+                <dd className="pre-wrap">{story.previousVisit.changeNextTime}</dd>
+              </div>
+            )}
+            {story.previousVisit.notesForNextVisit && (
+              <div>
+                <dt>Notes for this visit</dt>
+                <dd className="pre-wrap">{story.previousVisit.notesForNextVisit}</dd>
+              </div>
+            )}
+          </dl>
+        </section>
       )}
 
       {choices && (
@@ -229,6 +256,8 @@ function StoryPage() {
           )}
         </aside>
       </div>
+
+      <ReflectionSection story={story} onSaved={setStory} startOpen={searchParams.get('reflect') === '1'} />
 
       <p className="plan-footer-link"><Link to="/stories">Back to saved plans</Link></p>
     </article>

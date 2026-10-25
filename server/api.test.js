@@ -362,3 +362,72 @@ test('place reports and new places go through the API with clear errors', async 
   assert.equal((await api.send('POST', '/api/places', { name: 'ELM PARK', placeType: 'Other' })).status, 409)
   assert.equal((await api.send('POST', '/api/places', { name: 'Elm', placeType: 'Spaceport' })).status, 400)
 })
+
+test('a caregiver can save a reflection made only of this plan’s parts and supports', async (context) => {
+  const api = await startTestServer(context)
+  const plan = await (await api.send('POST', '/api/stories', {
+    destination: 'the dentist',
+    visitType: 'dentist',
+    profile: { sound: 'often', supports: ['headphones', 'snack'], customSupports: ['a blue blanket'] },
+  })).json()
+  assert.equal(plan.reflection, null)
+  assert.deepEqual(plan.reflectionChoices.supports, ['Noise-reducing headphones', 'A snack or drink', 'a blue blanket'])
+  assert.ok(plan.reflectionChoices.helped.some((part) => part.id === 'sound'))
+
+  const saved = await api.send('PUT', `/api/stories/${plan.id}/reflection`, {
+    helped: ['journey', 'sound', 'sound'],
+    supportsUsed: ['a blue blanket', 'Noise-reducing headphones'],
+    changeNextTime: '  Book   the first appointment\n\n\n\nof the day  ',
+    notesForNextVisit: 'Ask for the quiet room.',
+  })
+  assert.equal(saved.status, 200)
+  const reflected = await saved.json()
+  assert.deepEqual(reflected.reflection.helped, ['sound', 'journey'])
+  assert.deepEqual(reflected.reflection.supportsUsed, ['Noise-reducing headphones', 'a blue blanket'])
+  assert.equal(reflected.reflection.changeNextTime, 'Book the first appointment\n\nof the day')
+  assert.equal(reflected.checklist.find((item) => item.id === 'reflect').completed, true)
+  const [summary] = await (await api.get('/api/stories')).json()
+  assert.equal(summary.hasReflection, true)
+
+  const invalid = [
+    {},
+    { helped: ['lighting'] },
+    { supportsUsed: ['A visual timer'] },
+    { helped: 'sound' },
+    { notesForNextVisit: 'x'.repeat(501) },
+    { changeNextTime: 7 },
+  ]
+  for (const body of invalid) {
+    const response = await api.send('PUT', `/api/stories/${plan.id}/reflection`, body)
+    assert.equal(response.status, 400, JSON.stringify(body))
+  }
+  assert.equal((await api.send('PUT', '/api/stories/missing/reflection', { helped: ['journey'] })).status, 404)
+})
+
+test('notes from a past visit appear in a new plan only when the caregiver asks', async (context) => {
+  const api = await startTestServer(context)
+  const create = async (extra = {}) => (await api.send('POST', '/api/stories', {
+    destination: 'the dentist', visitType: 'dentist', ...extra,
+  })).json()
+  const first = await create()
+  await api.send('PUT', `/api/stories/${first.id}/reflection`, {
+    changeNextTime: 'Go earlier.', notesForNextVisit: 'Ask for the quiet room.',
+  })
+
+  assert.equal((await create()).previousVisit, null)
+  const second = await create({ carryNotesFrom: first.id })
+  assert.equal(second.previousVisit.fromStoryId, first.id)
+  assert.equal(second.previousVisit.notesForNextVisit, 'Ask for the quiet room.')
+  assert.equal(second.reflection, null)
+
+  const rebuilt = await (await api.send('PUT', `/api/stories/${second.id}/plan`, {
+    destination: 'the dentist', visitType: 'dentist', profile: { waiting: 'often' },
+  })).json()
+  assert.equal(rebuilt.previousVisit.changeNextTime, 'Go earlier.')
+
+  const noNotes = await create()
+  for (const carryNotesFrom of [noNotes.id, 'missing', 42]) {
+    const response = await api.send('POST', '/api/stories', { destination: 'X', visitType: 'other', carryNotesFrom })
+    assert.equal(response.status, 400, String(carryNotesFrom))
+  }
+})

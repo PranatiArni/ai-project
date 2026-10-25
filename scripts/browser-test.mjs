@@ -296,6 +296,45 @@ try {
     `location.pathname === '/create-story' && document.querySelector('h1')?.textContent === 'Tell us about the visit'
       && document.querySelector('input[name=destination]')?.value === ''`))
 
+  console.log('— After the visit')
+  await open(`/trip/${storyId}?step=leave`, `${heading} === 'Leave and head home'`)
+  await click('Note what helped')
+  check('the last journey step opens the reflection form on the plan',
+    await waitFor(`location.search === '?reflect=1' && document.querySelector('.reflection-form')`))
+  const reflectionForm = `document.querySelector('.reflection-form')`
+  check('the form offers only this plan’s own supports', await run(`${reflectionForm}.textContent.includes('Noise-reducing headphones')
+    && !${reflectionForm}.textContent.includes('A visual timer')`))
+  await click('The visit journey', reflectionForm)
+  await click('Noise-reducing headphones', reflectionForm)
+  await fill('.reflection-form textarea[name=changeNextTime]', 'Book the first appointment of the day')
+  await fill('.reflection-form textarea[name=notesForNextVisit]', 'Ask for the quiet room')
+  await click('Save notes', reflectionForm)
+  check('saved notes are shown back', await waitFor(`document.querySelector('.reflection-summary')?.textContent.includes('Ask for the quiet room')
+    && document.querySelector('#reflection').textContent.includes('Your notes are saved')`))
+  const reflected = await api(`/api/stories/${storyId}`)
+  check('the reflection is saved and ticks "note what helped"', reflected.reflection?.supportsUsed.includes('Noise-reducing headphones')
+    && reflected.checklist.find((item) => item.id === 'reflect').completed)
+
+  console.log('— Bringing notes into a new plan')
+  await open('/create-story', `document.querySelector('select[name=pastVisit] option[value="${storyId}"]')`)
+  await fill('select[name=pastVisit]', storyId)
+  check('choosing a past visit shows its notes without using them',
+    await waitFor(`document.querySelector('.past-visit-card')?.textContent.includes('Book the first appointment')`))
+  check('the new form still starts with no preferences chosen',
+    await run(`document.querySelector('input[name=area-sound][value=not-a-concern]').checked`))
+  await click('Copy that plan’s preferences')
+  check('copying fills in that plan’s preferences', await waitFor(`document.querySelector('input[name=area-sound][value=often]').checked
+    && document.querySelector('input[name=area-waiting][value=often]').checked`))
+  await click('Show my notes from that visit')
+  await fill('input[name=destination]', 'the dentist')
+  await fill('select[name=visitType]', 'dentist')
+  await click('Create and save plan')
+  check('the new plan shows the notes the caregiver chose to bring', await waitFor(
+    `document.querySelector('.previous-visit')?.textContent.includes('Ask for the quiet room')`))
+  const withNotesId = await storyIdFromUrl()
+  check('it is a new plan with its own empty reflection', withNotesId !== storyId
+    && (await api(`/api/stories/${withNotesId}`)).reflection === null)
+
   console.log('— Places and family reports')
   await open('/places', `document.querySelectorAll('.place-card').length === 3`)
   check('example places are labeled and have no invented scores', await run(`[...document.querySelectorAll('.place-card')]
@@ -341,6 +380,7 @@ try {
   check('the second plan is a different saved plan', secondId && secondId !== storyId)
   check('its story has crowd and waiting parts but no sound part',
     sectionIds(second).includes('crowds') && sectionIds(second).includes('waiting') && !sectionIds(second).includes('sound'))
+  check('a plan made without choosing a past visit has no notes from one', second.previousVisit === null)
   check('its checklist differs from the first family’s',
     second.checklist.some((item) => item.id === 'practice-waiting')
       && !second.checklist.some((item) => item.id === 'preview-sounds'))

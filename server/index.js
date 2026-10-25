@@ -22,6 +22,7 @@ import {
   PlaceInputError,
   RATING_CATEGORIES,
 } from './places.js'
+import { cleanReflection, previousVisitNotes, ReflectionError } from './reflection.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const databasePath = process.env.DATABASE_PATH || path.resolve(here, '../.data/app.sqlite')
@@ -180,8 +181,13 @@ function createApp(database = createDatabase(databasePath)) {
     let story
     try {
       story = createPersonalizedStory(body)
+      // Only when the caregiver chose to bring notes forward from a past visit.
+      if (body.carryNotesFrom !== undefined) {
+        if (typeof body.carryNotesFrom !== 'string') throw new ValidationError('Choose a past visit from the list.')
+        story.planDetails.previousVisit = previousVisitNotes(findStory(body.carryNotesFrom))
+      }
     } catch (error) {
-      if (error instanceof ValidationError || error instanceof ProfileError) {
+      if (error instanceof ValidationError || error instanceof ProfileError || error instanceof ReflectionError) {
         return response.status(400).json({ error: error.message })
       }
       throw error
@@ -290,6 +296,8 @@ function createApp(database = createDatabase(databasePath)) {
       }
       throw error
     }
+    // Notes brought forward from a past visit stay with the plan.
+    if (story.previousVisit) rebuilt.planDetails.previousVisit = story.previousVisit
     const wasCompleted = new Map(story.checklist.map((item) => [item.id, item.completed]))
     const checklist = rebuilt.checklist.map((item) => ({ ...item, completed: wasCompleted.get(item.id) === true }))
 
@@ -312,6 +320,24 @@ function createApp(database = createDatabase(databasePath)) {
       new Date().toISOString(),
       story.id,
     )
+    return response.json(findStory(story.id))
+  })
+
+  // Saves the caregiver's post-visit reflection, and ticks the checklist item
+  // that asks them to note what helped.
+  app.put('/api/stories/:id/reflection', (request, response) => {
+    const story = findStory(request.params.id)
+    if (!story) return response.status(404).json({ error: 'Story not found.' })
+    let reflection
+    try {
+      reflection = cleanReflection(request.body, story)
+    } catch (error) {
+      if (error instanceof ReflectionError) return response.status(400).json({ error: error.message })
+      throw error
+    }
+    const checklist = story.checklist.map((item) => (item.id === 'reflect' ? { ...item, completed: true } : item))
+    database.prepare('UPDATE stories SET reflection_json = ?, checklist_json = ?, updated_at = ? WHERE id = ?')
+      .run(JSON.stringify(reflection), JSON.stringify(checklist), reflection.updatedAt, story.id)
     return response.json(findStory(story.id))
   })
 
