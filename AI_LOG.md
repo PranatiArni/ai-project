@@ -169,3 +169,13 @@ more casual, with fewer long explanations. The meaning stayed the same: the
 app still says that place reports are not checked, that example places are
 not real, and that it is not medical advice. Tests and screenshots were
 updated to match.
+
+### Pastel color scheme (October 26, 2026)
+
+I asked Claude to replace the all-green colors with pastels in several colors
+(lavender, pink, peach, butter yellow, mint, and sky blue) used across the
+whole app. The colors are now named variables at the top of
+`client/src/index.css`. Story pictures, step numbers, cards, and support icons
+take turns using the different pastels. Every text color was checked against
+its background to meet WCAG AA contrast, and the nav now highlights the
+current page. Screenshots were updated.

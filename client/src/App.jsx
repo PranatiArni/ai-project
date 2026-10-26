@@ -1,4 +1,4 @@
-import { Link, Route, Routes } from 'react-router-dom'
+import { Link, NavLink, Route, Routes } from 'react-router-dom'
 import CalmBreakPage from './pages/CalmBreakPage.jsx'
 import HomePage from './pages/HomePage.jsx'
 import PlacesPage from './pages/PlacesPage.jsx'
@@ -25,10 +25,10 @@ function App() {
       <header className="site-header">
         <Link className="brand" to="/">Ready Together</Link>
         <nav aria-label="Main navigation">
-          <Link to="/">Home</Link>
-          <Link to="/stories">Saved plans</Link>
-          <Link to="/create-story">Plan a visit</Link>
-          <Link to="/places">Places</Link>
+          <NavLink to="/" end>Home</NavLink>
+          <NavLink to="/stories">Saved plans</NavLink>
+          <NavLink to="/create-story">Plan a visit</NavLink>
+          <NavLink to="/places">Places</NavLink>
         </nav>
       </header>
       <main>

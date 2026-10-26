@@ -133,7 +133,7 @@ function VisitJourneyPage() {
       </nav>
 
       <article className="journey-step">
-        <div className="reader-part has-picture">
+        <div className="reader-part has-picture" data-tone={index % 6}>
           <StoryPicture sectionId={step.pictureSection} visitType={story.visitType} />
           <div className="reader-words">
             <p className="reader-progress">Step {index + 1} of {steps.length}</p>

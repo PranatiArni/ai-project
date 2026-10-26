@@ -98,7 +98,7 @@ function StoryReader({ story, focused = false, endActions = null }) {
         </div>
       )}
 
-      <div className={hasPicture ? 'reader-part has-picture' : 'reader-part'}>
+      <div className={hasPicture ? 'reader-part has-picture' : 'reader-part'} data-tone={index % 6}>
         {hasPicture && <StoryPicture sectionId={section.id} visitType={story.visitType} />}
         <div className="reader-words">
           <Heading ref={headingRef} tabIndex={-1}>{page.title ?? `Part ${index + 1}`}</Heading>

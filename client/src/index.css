@@ -1,7 +1,49 @@
+/* Pastel palette. Text colors stay dark so everything keeps strong contrast. */
+:root {
+  --ink: #2f2a45;
+  --ink-soft: #453f5e;
+  --muted: #5f5975;
+  --label: #8a3d6f;
+  --accent: #6a55b8;
+  --accent-dark: #54419c;
+  --accent-soft: #f1ecfe;
+  --focus: #8f7ad6;
+  --line: #e7e0f4;
+  --line-mid: #c9bdea;
+  --line-strong: #9a8cc6;
+  --line-warm: #f3e4da;
+  --page: #faf7ff;
+  --surface: #fff;
+  --surface-tint: #fcfaff;
+  --surface-warm: #fffbf7;
+
+  --lavender: #ece6fb;
+  --lavender-strong: #bba8f0;
+  --lavender-ink: #4f3f8f;
+  --pink: #fde4ef;
+  --pink-strong: #f5a9c8;
+  --pink-ink: #8a3360;
+  --peach: #ffeadd;
+  --peach-strong: #ffc29d;
+  --peach-ink: #864621;
+  --butter: #fff5d1;
+  --butter-strong: #f0cf62;
+  --butter-ink: #66500f;
+  --mint: #dcf5ea;
+  --mint-strong: #93d9bb;
+  --mint-ink: #1f6249;
+  --sky: #e0effd;
+  --sky-strong: #9ec8f2;
+  --sky-ink: #285a86;
+  --rose: #fff0f4;
+  --rose-strong: #c2416b;
+  --rose-ink: #8a2346;
+}
+
 :root {
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  color: #273a37;
-  background: #f3f7f5;
+  color: var(--ink);
+  background: var(--page);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -11,6 +53,13 @@
 
 body {
   margin: 0;
+  background:
+    radial-gradient(circle at 0% 0%, #f1e9ff 0, transparent 45%),
+    radial-gradient(circle at 100% 10%, #ffe8f1 0, transparent 40%),
+    radial-gradient(circle at 100% 100%, #e3f6ee 0, transparent 45%),
+    radial-gradient(circle at 0% 100%, #fff1e4 0, transparent 40%),
+    var(--page);
+  background-attachment: fixed;
   min-width: 320px;
   min-height: 100vh;
 }
@@ -24,14 +73,14 @@ h1, h2, h3, p {
 }
 
 h1 {
-  color: #243d38;
+  color: var(--ink);
   font-size: clamp(2rem, 5vw, 3rem);
   line-height: 1.12;
   letter-spacing: -0.04em;
 }
 
 h2 {
-  color: #29423e;
+  color: var(--ink);
 }
 
 button, input, select, textarea {
@@ -44,10 +93,10 @@ input, select, textarea {
 }
 
 a {
-  color: #2b6257;
+  color: var(--accent-dark);
 }
 
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-  outline: 3px solid #8ab9aa;
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
